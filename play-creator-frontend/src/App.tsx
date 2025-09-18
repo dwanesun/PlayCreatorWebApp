@@ -189,14 +189,25 @@ export default function App() {
               dash={[6, 6]}
             />
 
-            {/* High School three-point arc (no corner straight lines) */}
+            {/* High School three-point arc (with vertical extensions to baseline) */}
             <Arc
               x={centerX}
               y={hoopY}
               innerRadius={threeR}
               outerRadius={threeR}
               angle={180}
-              rotation={0} // open downward into the court
+              rotation={0} // arc opens downward into the court
+              stroke="#1f2937"
+              strokeWidth={2}
+            />
+            {/* Corner three straight lines from arc endpoints to the baseline */}
+            <Line
+              points={[centerX - threeR, hoopY, centerX - threeR, baselineY]}
+              stroke="#1f2937"
+              strokeWidth={2}
+            />
+            <Line
+              points={[centerX + threeR, hoopY, centerX + threeR, baselineY]}
               stroke="#1f2937"
               strokeWidth={2}
             />
