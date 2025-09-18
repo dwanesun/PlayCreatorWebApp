@@ -1,8 +1,27 @@
 ﻿import { useMemo, useRef, useState } from "react";
-import { Stage, Layer, Rect, Circle, Text, Group, Line } from "react-konva";
+import { Stage, Layer, Rect, Circle, Text, Group, Line, Arc } from "react-konva";
 
-const COURT_WIDTH = 800;
-const COURT_HEIGHT = 450;
+// Canvas and court geometry
+// High School dimensions + scale
+const SCALE = 10; // pixels per foot
+const BUFFER = 60; // px out-of-bounds area around the court
+const ft = (feet: number) => feet * SCALE;
+
+// Half-court (HS): 50 ft wide (sideline to sideline), 42 ft long (baseline to midcourt)
+const COURT_WIDTH = ft(50);
+const COURT_HEIGHT = ft(42);
+const STAGE_WIDTH = COURT_WIDTH + BUFFER * 2;
+const STAGE_HEIGHT = COURT_HEIGHT + BUFFER * 2;
+const COURT_X = BUFFER;
+const COURT_Y = BUFFER;
+
+// HS key distances (in feet)
+const BACKBOARD_FROM_BASELINE_FT = 4;
+const HOOP_CENTER_FROM_BASELINE_FT = 5.25; // 63 inches
+const LANE_WIDTH_FT = 12;
+const FREE_THROW_FROM_BASELINE_FT = BACKBOARD_FROM_BASELINE_FT + 15; // 19 ft
+const FREE_THROW_RADIUS_FT = 6;
+const THREE_ARC_RADIUS_FT = 19.75; // 19' 9"
 
 type Team = "offense" | "defense";
 
@@ -29,14 +48,37 @@ export default function App() {
   const [cones, setCones] = useState<Cone[]>([]);
   const nextId = useRef(1);
 
-  // Precompute default drop positions to avoid total overlap when adding multiple quickly
+  // Court feature coordinates (in px)
+  const baselineY = COURT_Y; // top
+  const halfCourtY = COURT_Y + COURT_HEIGHT; // bottom
+  const leftSidelineX = COURT_X;
+  const rightSidelineX = COURT_X + COURT_WIDTH;
+  const centerX = COURT_X + COURT_WIDTH / 2;
+
+  const hoopY = baselineY + ft(HOOP_CENTER_FROM_BASELINE_FT);
+  const hoopR = 9; // px visual radius for the rim
+
+  const backboardY = baselineY + ft(BACKBOARD_FROM_BASELINE_FT);
+  const backboardW = ft(6); // 6 ft wide
+  const backboardX = centerX - backboardW / 2;
+
+  const laneLeftX = centerX - ft(LANE_WIDTH_FT) / 2;
+  const laneRightX = centerX + ft(LANE_WIDTH_FT) / 2;
+  const laneBottomY = baselineY + ft(FREE_THROW_FROM_BASELINE_FT);
+
+  const ftLineY = laneBottomY;
+  const ftCircleR = ft(FREE_THROW_RADIUS_FT);
+
+  const threeR = ft(THREE_ARC_RADIUS_FT);
+
+  // Default drop spots spaced across the court area
   const defaultSpots = useMemo(
     () => [
-      { x: COURT_WIDTH * 0.30, y: COURT_HEIGHT * 0.50 },
-      { x: COURT_WIDTH * 0.40, y: COURT_HEIGHT * 0.40 },
-      { x: COURT_WIDTH * 0.50, y: COURT_HEIGHT * 0.60 },
-      { x: COURT_WIDTH * 0.60, y: COURT_HEIGHT * 0.35 },
-      { x: COURT_WIDTH * 0.70, y: COURT_HEIGHT * 0.55 },
+      { x: COURT_X + COURT_WIDTH * 0.30, y: COURT_Y + COURT_HEIGHT * 0.50 },
+      { x: COURT_X + COURT_WIDTH * 0.40, y: COURT_Y + COURT_HEIGHT * 0.40 },
+      { x: COURT_X + COURT_WIDTH * 0.50, y: COURT_Y + COURT_HEIGHT * 0.60 },
+      { x: COURT_X + COURT_WIDTH * 0.60, y: COURT_Y + COURT_HEIGHT * 0.35 },
+      { x: COURT_X + COURT_WIDTH * 0.70, y: COURT_Y + COURT_HEIGHT * 0.55 },
     ],
     []
   );
@@ -64,7 +106,7 @@ export default function App() {
       {
         id: `cone-${nextId.current++}`,
         x: spot.x,
-        y: clamp(spot.y, 30, COURT_HEIGHT - 30),
+        y: clamp(spot.y, 30, STAGE_HEIGHT - 30),
       },
     ]);
   };
@@ -73,11 +115,11 @@ export default function App() {
     setPlayers((prev) => prev.map((p) => (p.id === id ? { ...p, ...pos } : p)));
   };
 
-  // Keep draggable tokens inside court bounds
-  const boundToCourt = (x: number, y: number, radius = 20) => {
+  // Keep draggable tokens inside the full canvas (including out-of-bounds buffer)
+  const boundToCanvas = (x: number, y: number, radius = 20) => {
     return {
-      x: clamp(x, radius, COURT_WIDTH - radius),
-      y: clamp(y, radius, COURT_HEIGHT - radius),
+      x: clamp(x, radius, STAGE_WIDTH - radius),
+      y: clamp(y, radius, STAGE_HEIGHT - radius),
     };
   };
 
@@ -85,27 +127,86 @@ export default function App() {
     <div style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: 12 }}>
       {/* The canvas area grows, toolbox is a fixed right panel */}
       <div style={{ flex: 1 }}>
-        <Stage width={COURT_WIDTH} height={COURT_HEIGHT}>
+        <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT}>
           <Layer>
-            {/* Half-court background */}
+            {/* Canvas background */}
+            <Rect x={0} y={0} width={STAGE_WIDTH} height={STAGE_HEIGHT} fill="#ffffff" />
+            {/* Court outline */}
             <Rect
-              x={0}
-              y={0}
+              x={COURT_X}
+              y={COURT_Y}
               width={COURT_WIDTH}
               height={COURT_HEIGHT}
-              fill="#f4a261"
-              cornerRadius={10}
-              shadowBlur={5}
+              stroke="#1f2937"
+              strokeWidth={2}
+              cornerRadius={4}
             />
-            {/* Mid-court line */}
-            <Rect x={COURT_WIDTH / 2 - 1} y={0} width={2} height={COURT_HEIGHT} fill="#ffffffaa" />
+            {/* Baseline, sidelines, half-court line */}
+            <Line points={[leftSidelineX, baselineY, rightSidelineX, baselineY]} stroke="#1f2937" strokeWidth={2} />
+            <Line points={[leftSidelineX, baselineY, leftSidelineX, halfCourtY]} stroke="#1f2937" strokeWidth={2} />
+            <Line points={[rightSidelineX, baselineY, rightSidelineX, halfCourtY]} stroke="#1f2937" strokeWidth={2} />
+            <Line points={[leftSidelineX, halfCourtY, rightSidelineX, halfCourtY]} stroke="#1f2937" strokeWidth={2} />
+
+            {/* Backboard */}
+            <Rect x={backboardX} y={backboardY} width={backboardW} height={2} fill="#1f2937" />
+
+            {/* Hoop (rim) */}
+            <Circle x={centerX} y={hoopY} radius={hoopR} stroke="#1f2937" strokeWidth={2} />
+
+            {/* Lane (key) */}
+            <Rect
+              x={laneLeftX}
+              y={baselineY}
+              width={laneRightX - laneLeftX}
+              height={laneBottomY - baselineY}
+              stroke="#1f2937"
+              strokeWidth={2}
+            />
+
+            {/* Free-throw line */}
+            <Line points={[laneLeftX, ftLineY, laneRightX, ftLineY]} stroke="#1f2937" strokeWidth={2} />
+
+            {/* Free-throw circle: upper half solid, lower half dashed (common on many courts) */}
+            <Arc
+              x={centerX}
+              y={ftLineY}
+              innerRadius={ftCircleR}
+              outerRadius={ftCircleR}
+              angle={180}
+              rotation={180} // open downward toward the basket
+              stroke="#1f2937"
+              strokeWidth={2}
+            />
+            <Arc
+              x={centerX}
+              y={ftLineY}
+              innerRadius={ftCircleR}
+              outerRadius={ftCircleR}
+              angle={180}
+              rotation={0} // open upward
+              stroke="#1f2937"
+              strokeWidth={2}
+              dash={[6, 6]}
+            />
+
+            {/* High School three-point arc (no corner straight lines) */}
+            <Arc
+              x={centerX}
+              y={hoopY}
+              innerRadius={threeR}
+              outerRadius={threeR}
+              angle={180}
+              rotation={180} // open downward into the court
+              stroke="#1f2937"
+              strokeWidth={2}
+            />
 
             {/* Players */}
             {players.map((p) => {
               const radius = 20;
 
               const onDragMove = (e: any) => {
-                const { x, y } = boundToCourt(e.target.x(), e.target.y(), radius);
+                const { x, y } = boundToCanvas(e.target.x(), e.target.y(), radius);
                 updatePlayer(p.id, { x, y });
               };
 
@@ -172,7 +273,7 @@ export default function App() {
           {cones.map((c) => {
             const radius = 18;
             const onDragMove = (e: any) => {
-              const { x, y } = boundToCourt(e.target.x(), e.target.y(), radius);
+              const { x, y } = boundToCanvas(e.target.x(), e.target.y(), radius);
               setCones((prev) => prev.map((cn) => (cn.id === c.id ? { ...cn, x, y } : cn)));
             };
             const onMouseEnter = () => (document.body.style.cursor = "grab");
