@@ -196,7 +196,7 @@ export default function App() {
               innerRadius={threeR}
               outerRadius={threeR}
               angle={180}
-              rotation={180} // open downward into the court
+              rotation={0} // open downward into the court
               stroke="#1f2937"
               strokeWidth={2}
             />
