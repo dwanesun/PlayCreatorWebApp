@@ -124,9 +124,88 @@ export default function App() {
   };
 
   return (
-    <div style={{ display: "flex", alignItems: "flex-start", gap: 16, padding: 12 }}>
-      {/* The canvas area grows, toolbox is a fixed right panel */}
-      <div style={{ flex: 1 }}>
+    <div
+      style={{
+        display: "flex",
+        justifyContent: "center",
+        alignItems: "center",
+        gap: 24,
+        padding: 24,
+        minHeight: "100vh",
+        boxSizing: "border-box",
+        background: "#fff",
+      }}
+    >
+      {/* Left placeholder panel for Phases */}
+      <aside
+        style={{
+          width: 260,
+          height: STAGE_HEIGHT,
+          padding: 12,
+          border: "1px solid #e0e0e0",
+          borderRadius: 8,
+          fontFamily: "system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, sans-serif",
+          background: "#ffffff",
+          display: "flex",
+          flexDirection: "column",
+          gap: 12,
+        }}
+      >
+        <h3 style={{ margin: 0 }}>Phases</h3>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <button
+            style={{
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid #cbd5e1",
+              background: "#f8fafc",
+              cursor: "pointer",
+              color: "#1f2937",
+            }}
+            title="Next phase"
+          >
+            Next
+          </button>
+          <button
+            style={{
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid #cbd5e1",
+              background: "#f8fafc",
+              cursor: "pointer",
+              color: "#1f2937",
+            }}
+            title="Clone phase"
+          >
+            Clone
+          </button>
+          <button
+            style={{
+              padding: "6px 10px",
+              borderRadius: 6,
+              border: "1px solid #cbd5e1",
+              background: "#f8fafc",
+              cursor: "pointer",
+              color: "#1f2937",
+            }}
+            title="Start with empty phase"
+          >
+            Empty
+          </button>
+        </div>
+        <div style={{ height: 1, background: "#eee", margin: "4px 0" }} />
+        <div style={{ color: "#64748b", fontSize: 12 }}>Phase timeline and controls coming soon…</div>
+      </aside>
+
+      {/* Centered canvas area */}
+      <div
+        style={{
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#ffffff",
+        }}
+      >
         <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT}>
           <Layer>
             {/* Canvas background */}
@@ -326,12 +405,13 @@ export default function App() {
     <aside
       style={{
         width: 280,
-        height: COURT_HEIGHT,
+        height: STAGE_HEIGHT,
         padding: 12,
         border: "1px solid #e0e0e0",
         borderRadius: 8,
         fontFamily: "system-ui, -apple-system, Segue UI, Roboto, Helvetica, Arial, sans-serif",
         overflowY: "auto",
+        background: "#ffffff",
       }}
     >
       {/* Add Actions (placeholder) */}
