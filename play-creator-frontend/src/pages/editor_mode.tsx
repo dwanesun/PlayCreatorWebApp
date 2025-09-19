@@ -1,7 +1,7 @@
 // src/pages/EditorMode.tsx
-import { useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState, useEffect } from "react";
 import { Stage, Rect, Layer } from "react-konva";
-import { CourtHalf } from "../components/court/half_court_components";
+import { HalfCourt } from "../components/court/HalfCourt.tsx";
 import { OffenseO } from "../components/tokens/OffenseO";
 import { DefenseX } from "../components/tokens/DefenseX";
 import { ConeToken } from "../components/tokens/ConeToken";
@@ -25,6 +25,59 @@ export default function EditorMode() {
   const [cones, setCones] = useState<ConeTokenType[]>([]);
   const nextId = useRef(1);
 
+  // Responsive scaling + collapsing left panel
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const centerRef = useRef<HTMLDivElement | null>(null);
+  const stageRef = useRef<any>(null);
+  const [scale, setScale] = useState(1);
+  const [leftVisible, setLeftVisible] = useState(true);
+
+  useEffect(() => {
+    const ro = new ResizeObserver(() => {
+      const container = containerRef.current;
+      const center = centerRef.current;
+      if (!container || !center) return;
+
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+
+      const leftWidth = 260;
+      const rightWidth = 280;
+      const gap = 24;
+
+      const gapsWhenBoth = 2 * gap;
+      const availableCenterWidthWithLeft =
+        containerWidth - rightWidth - gapsWhenBoth - leftWidth;
+
+      const availableCenterWidthNoLeft =
+        containerWidth - rightWidth - gap;
+
+      const maxScale = 1.5;
+      const minScale = 0.6;
+      const availableHeight = Math.max(containerHeight - 0, 200);
+
+      const scaleFor = (w: number) => {
+        const sW = w / STAGE_WIDTH;
+        const sH = availableHeight / STAGE_HEIGHT;
+        return Math.min(Math.max(minScale, Math.min(sW, sH)), maxScale);
+      };
+
+      let nextLeftVisible = true;
+      let s = scaleFor(availableCenterWidthWithLeft);
+
+      if (availableCenterWidthWithLeft <= 0 || s < 0.9) {
+        nextLeftVisible = false;
+        s = scaleFor(availableCenterWidthNoLeft);
+      }
+
+      setLeftVisible(nextLeftVisible);
+      setScale(s);
+    });
+
+    if (containerRef.current) ro.observe(containerRef.current);
+    return () => ro.disconnect();
+  }, []);
+
   const defaultSpots = useMemo(
     () => [
       { x: COURT_X + COURT_WIDTH * 0.30, y: COURT_Y + COURT_HEIGHT * 0.50 },
@@ -40,6 +93,56 @@ export default function EditorMode() {
     x: clamp(x, radius, STAGE_WIDTH - radius),
     y: clamp(y, radius, STAGE_HEIGHT - radius),
   });
+
+  // Helpers to support drag from toolbox
+  type DragToken =
+    | { kind: "player"; team: "offense" | "defense"; number: 1 | 2 | 3 | 4 | 5 }
+    | { kind: "cone" };
+
+  const startDrag = (e: React.DragEvent, data: DragToken) => {
+    e.dataTransfer.setData("application/x-token", JSON.stringify(data));
+    e.dataTransfer.effectAllowed = "copy";
+  };
+
+  const handleCanvasDragOver = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = "copy";
+  };
+
+  const handleCanvasDrop = (e: React.DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    const raw = e.dataTransfer.getData("application/x-token");
+    if (!raw) return;
+    let data: DragToken | null = null;
+    try {
+      data = JSON.parse(raw) as DragToken;
+    } catch {
+      return;
+    }
+    const stage = stageRef.current;
+    if (!stage) return;
+
+    const rect = stage.container().getBoundingClientRect();
+    const localX = (e.clientX - rect.left) / scale;
+    const localY = (e.clientY - rect.top) / scale;
+
+    if (data.kind === "cone") {
+      const radius = 18;
+      const { x, y } = boundToCanvas(localX, localY, radius);
+      setCones((prev) => [...prev, { id: `cone-${nextId.current++}`, x, y }]);
+      return;
+    }
+
+    if (data.kind === "player") {
+      const radius = 20;
+      const { x, y } = boundToCanvas(localX, localY, radius);
+      const { team, number } = data;
+      setPlayers((prev) => [
+        ...prev,
+        { id: `${team}-${number}-${nextId.current++}`, team, number, x, y },
+      ]);
+    }
+  };
 
   const addPlayer = (team: "offense" | "defense", number: 1 | 2 | 3 | 4 | 5) => {
     const i = players.length % defaultSpots.length;
@@ -58,6 +161,7 @@ export default function EditorMode() {
 
   return (
     <div
+      ref={containerRef}
       style={{
         display: "flex",
         justifyContent: "center",
@@ -65,6 +169,7 @@ export default function EditorMode() {
         gap: 24,
         padding: 24,
         minHeight: "100vh",
+        width: "100%",
         boxSizing: "border-box",
         background: "#fff",
       }}
@@ -78,9 +183,10 @@ export default function EditorMode() {
           border: "1px solid #e0e0e0",
           borderRadius: 8,
           background: "#ffffff",
-          display: "flex",
+          display: leftVisible ? "flex" : "none",
           flexDirection: "column",
           gap: 12,
+          flexShrink: 0,
         }}
       >
         <h3 style={{ margin: 0 }}>Phases</h3>
@@ -107,36 +213,53 @@ export default function EditorMode() {
       </aside>
 
       {/* Center: Canvas */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "center", background: "#ffffff" }}>
-        <Stage width={STAGE_WIDTH} height={STAGE_HEIGHT}>
-          {/* Background must be inside a Layer */}
+      <div
+        ref={centerRef}
+        onDragOver={handleCanvasDragOver}
+        onDrop={handleCanvasDrop}
+        style={{
+          flex: 1,
+          minWidth: 0,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#ffffff",
+        }}
+      >
+        <Stage
+          ref={stageRef}
+          width={STAGE_WIDTH * scale}
+          height={STAGE_HEIGHT * scale}
+          scaleX={scale}
+          scaleY={scale}
+        >
           <Layer>
             <Rect x={0} y={0} width={STAGE_WIDTH} height={STAGE_HEIGHT} fill="#ffffff" />
           </Layer>
 
-          {/* Canvas border (separate from the court/out-of-bounds) */}
           <Layer>
             <Rect
               x={0.5}
               y={0.5}
               width={STAGE_WIDTH - 1}
               height={STAGE_HEIGHT - 1}
-              stroke="#94a3b8"        // slate-400
+              stroke="#94a3b8"
               strokeWidth={2}
               cornerRadius={8}
             />
           </Layer>
-          {/* Court (already returns a Layer internally) */}
-          <CourtHalf />
 
-          {/* Tokens must be inside a Layer too */}
+          <HalfCourt />
+
           <Layer>
             {players.map((p) => {
               const radius = 20;
               const handlers = {
                 draggable: true,
                 onDragMove: (e: any) => {
-                  const { x, y } = boundToCanvas(e.target.x(), e.target.y(), radius);
+                  const stage = e.target.getStage();
+                  const s = stage?.scaleX() ?? 1;
+                  const { x, y } = boundToCanvas(e.target.x() / s, e.target.y() / s, radius);
                   setPlayers((prev) => prev.map((pp) => (pp.id === p.id ? { ...pp, x, y } : pp)));
                 },
                 onMouseEnter: () => (document.body.style.cursor = "grab"),
@@ -156,7 +279,9 @@ export default function EditorMode() {
               const handlers = {
                 draggable: true,
                 onDragMove: (e: any) => {
-                  const { x, y } = boundToCanvas(e.target.x(), e.target.y(), radius);
+                  const stage = e.target.getStage();
+                  const s = stage?.scaleX() ?? 1;
+                  const { x, y } = boundToCanvas(e.target.x() / s, e.target.y() / s, radius);
                   setCones((prev) => prev.map((cc) => (cc.id === c.id ? { ...cc, x, y } : cc)));
                 },
                 onMouseEnter: () => (document.body.style.cursor = "grab"),
@@ -180,6 +305,7 @@ export default function EditorMode() {
           borderRadius: 8,
           background: "#ffffff",
           overflowY: "auto",
+          flexShrink: 0,
         }}
       >
         <section>
@@ -216,6 +342,10 @@ export default function EditorMode() {
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={`o${n}`}
+                  draggable
+                  onDragStart={(e) =>
+                    startDrag(e, { kind: "player", team: "offense", number: n as 1 | 2 | 3 | 4 | 5 })
+                  }
                   onClick={() => addPlayer("offense", n as 1 | 2 | 3 | 4 | 5)}
                   style={{
                     padding: "6px 0",
@@ -223,9 +353,9 @@ export default function EditorMode() {
                     border: "1px solid #0f172a",
                     background: "#ffffff",
                     color: "#0f172a",
-                    cursor: "pointer",
+                    cursor: "grab",
                   }}
-                  title={`Add Offense ${n}`}
+                  title={`Add/Drag Offense ${n}`}
                 >
                   {n}
                 </button>
@@ -239,6 +369,10 @@ export default function EditorMode() {
               {[1, 2, 3, 4, 5].map((n) => (
                 <button
                   key={`d${n}`}
+                  draggable
+                  onDragStart={(e) =>
+                    startDrag(e, { kind: "player", team: "defense", number: n as 1 | 2 | 3 | 4 | 5 })
+                  }
                   onClick={() => addPlayer("defense", n as 1 | 2 | 3 | 4 | 5)}
                   style={{
                     padding: "6px 0",
@@ -246,9 +380,9 @@ export default function EditorMode() {
                     border: "1px solid #c0392b",
                     background: "#fdecea",
                     color: "#972c23",
-                    cursor: "pointer",
+                    cursor: "grab",
                   }}
-                  title={`Add Defense ${n}`}
+                  title={`Add/Drag Defense ${n}`}
                 >
                   {n}
                 </button>
@@ -263,6 +397,8 @@ export default function EditorMode() {
           <h3 style={{ margin: 0, marginBottom: 8 }}>Add misc</h3>
           <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
             <button
+              draggable
+              onDragStart={(e) => startDrag(e, { kind: "cone" })}
               onClick={addCone}
               style={{
                 padding: "6px 10px",
@@ -270,12 +406,12 @@ export default function EditorMode() {
                 border: "1px solid #fb923c",
                 background: "#fff7ed",
                 color: "#c2410c",
-                cursor: "pointer",
+                cursor: "grab",
                 display: "flex",
                 alignItems: "center",
                 gap: 6,
               }}
-              title="Add Cone"
+              title="Add/Drag Cone"
             >
               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" style={{ display: "block" }}>
                 <path d="M12 3 L19 20 H5 Z" fill="#f97316" stroke="#b45309" strokeWidth={1.5} />
