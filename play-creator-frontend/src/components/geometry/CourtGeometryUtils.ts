@@ -1,6 +1,6 @@
 // src/court/geometry.ts
-export const SCALE = 10; // px per foot
-export const BUFFER = 60; // px out-of-bounds around court
+export const SCALE = 14; // px per foot (larger court)
+export const BUFFER = 80; // px out-of-bounds around court
 export const ft = (feet: number) => feet * SCALE;
 
 // HS half-court dimensions (feet)
