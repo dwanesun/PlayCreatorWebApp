@@ -6,6 +6,7 @@ import { DefensivePlayer } from "../components/tokens/DefensivePlayer.tsx";
 import { Cone } from "../components/tokens/Cone.tsx";
 import type { PlayerToken } from "../components/tokens/PlayerToken.ts";
 import type { ConeToken } from "../components/tokens/ConeToken.ts";
+import { DribblePath, type DribbleModel } from "../components/actions/Dribble.tsx";
 import {
   STAGE_WIDTH,
   STAGE_HEIGHT,
@@ -28,6 +29,14 @@ export default function EditorMode() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const centerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<any>(null);
+
+  // Selection and tools (allow selecting a player for auto-attach)
+  const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
+  const [tool, setTool] = useState<"none" | "dribble">("none");
+
+  // Dribble paths
+  const [dribbles, setDribbles] = useState<DribbleModel[]>([]);
+
   const [scale, setScale] = useState(1);
   const [leftVisible, setLeftVisible] = useState(true);
 
@@ -76,6 +85,37 @@ export default function EditorMode() {
     if (containerRef.current) ro.observe(containerRef.current);
     return () => ro.disconnect();
   }, []);
+
+  // Convert client to world coordinates using current stage scale and position
+  const toWorld = (clientX: number, clientY: number) => {
+    const stage = stageRef.current;
+    if (!stage) return { x: 0, y: 0 };
+    const rect = stage.container().getBoundingClientRect();
+    const s = stage.scaleX() || 1;
+    return { x: (clientX - rect.left) / s, y: (clientY - rect.top) / s };
+  };
+
+  // Add dribble – auto-attach to selected offense player if any
+  const addDribble = () => {
+    const selected = players.find((p) => p.id === selectedPlayerId && p.team === "offense");
+    const startPoint = selected
+      ? { x: selected.x, y: selected.y }
+      : { x: COURT_X + COURT_WIDTH * 0.35, y: COURT_Y + COURT_HEIGHT * 0.45 };
+    const endPoint = { x: startPoint.x + 120, y: startPoint.y - 40 };
+    const model: DribbleModel = {
+      id: `drb-${nextId.current++}`,
+      start: selected ? { kind: "player", playerId: selected.id } : { kind: "free", point: startPoint },
+      end: endPoint,
+      // Start straight (offset 0). User can bend globally with the midpoint handle.
+      mid: { t: 0.5, offset: 0 },
+    };
+    setDribbles((prev) => [...prev, model]);
+    setTool("dribble");
+  };
+
+  const updateDribble = (id: string, updater: (m: DribbleModel) => DribbleModel) => {
+    setDribbles((prev) => prev.map((d) => (d.id === id ? updater(d) : d)));
+  };
 
   const defaultSpots = useMemo(
     () => [
@@ -160,7 +200,6 @@ export default function EditorMode() {
 
   return (
     <div
-      ref={containerRef}
       style={{
         display: "flex",
         justifyContent: "center",
@@ -252,11 +291,25 @@ export default function EditorMode() {
 
           <HalfCourt />
 
+          {/* Dribble paths layer */}
+          <Layer>
+            {dribbles.map((d) => (
+              <DribblePath
+                key={d.id}
+                model={d}
+                offensePlayers={players.filter((p) => p.team === "offense")}
+                toWorld={toWorld}
+                onChange={(next) => updateDribble(d.id, () => next)}
+              />
+            ))}
+          </Layer>
+
           <Layer>
             {players.map((p) => {
               const radius = 20;
               const handlers = {
                 draggable: true,
+                onClick: () => setSelectedPlayerId(p.id),
                 onDragMove: (e: any) => {
                   const stage = e.target.getStage();
                   const s = stage?.scaleX() ?? 1;
@@ -312,7 +365,22 @@ export default function EditorMode() {
         <section>
           <h3 style={{ marginTop: 0, marginBottom: 8 }}>Add Actions</h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            {["Dribble", "Pass", "Cut", "Screen", "Shot", "Handoff"].map((label) => (
+            <button
+              onClick={addDribble}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: tool === "dribble" ? "2px solid #0f172a" : "1px solid #0f172a",
+                background: "#ffffff",
+                color: "#0f172a",
+                cursor: "pointer",
+              }}
+              title="Dribble (start attaches to selected offense player if any)"
+            >
+              Dribble
+            </button>
+            {/* keep other actions disabled for now */}
+            {["Pass", "Cut", "Screen", "Shot", "Handoff"].map((label) => (
               <button
                 key={label}
                 style={{
