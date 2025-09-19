@@ -9,9 +9,6 @@ import {
 
 export function CourtHalf() {
     // Vertical planks with consistent size, staggered like brickwork:
-    // - All planks same width and length
-    // - Adjacent columns offset by half a plank length
-    // - Each plank uses a different shade from the palette
     const plankWidth = 14;     // px: board width across x-axis (column width)
     const plankLength = 110;   // px: board length along y-axis
     const startX = COURT_X;
@@ -19,12 +16,12 @@ export function CourtHalf() {
     const startY = COURT_Y;
     const endY = COURT_Y + COURT_HEIGHT;
 
-    // Palette of wood shades
-    const woodShades = [
-        "#f7d7a6", "#f3cc93", "#efc384", "#eaba77",
-        "#e6b16a", "#e1a85e", "#dda052", "#d79745",
-        "#f0cda0", "#e7bb80",
-    ];
+    // Palette of wood shades (lightened darker tones for a more realistic maple look)
+   const woodShades = [
+        "#f8deb5", "#f5d3a1", "#f2c88e", "#efbf7f",
+        "#ebb671", "#e7ad63", "#f0cda0", "#f3cc93",
+        "#f6d9ac", "#f4d2a0",
+   ];
 
     // Deterministic shade per (column,row) for pleasing variety
     const pickShade = (col: number, rowIndex: number) =>
