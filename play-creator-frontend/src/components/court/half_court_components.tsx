@@ -16,12 +16,12 @@ export function CourtHalf() {
     const startY = COURT_Y;
     const endY = COURT_Y + COURT_HEIGHT;
 
-    // Palette of wood shades (lightened darker tones for a more realistic maple look)
-   const woodShades = [
-        "#f8deb5", "#f5d3a1", "#f2c88e", "#efbf7f",
-        "#ebb671", "#e7ad63", "#f0cda0", "#f3cc93",
-        "#f6d9ac", "#f4d2a0",
-   ];
+    // Palette of wood shades
+    const woodShades = [
+        "#fbe6c9", "#f9dfbb", "#f7d9ae", "#f5d3a1",
+        "#f3cc93", "#f5e0c3", "#f0cfa3", "#f6dfc1",
+        "#f4d7b3", "#f2d0a6",
+    ];
 
     // Deterministic shade per (column,row) for pleasing variety
     const pickShade = (col: number, rowIndex: number) =>
