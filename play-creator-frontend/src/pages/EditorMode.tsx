@@ -51,9 +51,9 @@ export default function EditorMode() {
       const availableCenterWidthNoLeft =
         containerWidth - rightWidth - gap;
 
-      const maxScale = 1.5;
-      const minScale = 0.6;
-      const availableHeight = Math.max(containerHeight - 0, 200);
+      const maxScale = 1;   // do not grow larger than design size
+      const minScale = 0.75; // allow shrinking on small screens
+      const availableHeight = Math.max(containerHeight, 200);
 
       const scaleFor = (w: number) => {
         const sW = w / STAGE_WIDTH;
@@ -167,8 +167,9 @@ export default function EditorMode() {
         alignItems: "center",
         gap: 24,
         padding: 24,
-        minHeight: "100vh",
+        height: "100vh",    // lock to viewport height
         width: "100%",
+        overflow: "hidden", // prevent page growth/scroll from layout pushing out
         boxSizing: "border-box",
         background: "#fff",
       }}
@@ -177,7 +178,7 @@ export default function EditorMode() {
       <aside
         style={{
           width: 260,
-          height: STAGE_HEIGHT,
+          height: Math.round(STAGE_HEIGHT * scale), // match scaled canvas height
           padding: 12,
           border: "1px solid #e0e0e0",
           borderRadius: 8,
@@ -223,6 +224,7 @@ export default function EditorMode() {
           alignItems: "center",
           justifyContent: "center",
           background: "#ffffff",
+          height: Math.round(STAGE_HEIGHT * scale), // keep center aligned to scaled height
         }}
       >
         <Stage
@@ -298,7 +300,7 @@ export default function EditorMode() {
       <aside
         style={{
           width: 280,
-          height: STAGE_HEIGHT,
+          height: Math.round(STAGE_HEIGHT * scale), // match scaled canvas height
           padding: 12,
           border: "1px solid #e0e0e0",
           borderRadius: 8,
