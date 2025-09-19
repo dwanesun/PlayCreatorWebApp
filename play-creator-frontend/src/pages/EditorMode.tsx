@@ -4,8 +4,8 @@ import { HalfCourt } from "../components/court/HalfCourt.tsx";
 import { OffensivePlayer } from "../components/tokens/OffensivePlayer.tsx";
 import { DefensivePlayer } from "../components/tokens/DefensivePlayer.tsx";
 import { Cone } from "../components/tokens/Cone.tsx";
-import type { PlayerTokenType } from "../components/tokens/PlayerTokenType";
-import type { ConeTokenType } from "../components/tokens/ConeTokenType";
+import type { PlayerToken } from "../components/tokens/PlayerToken.ts";
+import type { ConeToken } from "../components/tokens/ConeToken.ts";
 import {
   STAGE_WIDTH,
   STAGE_HEIGHT,
@@ -20,8 +20,8 @@ function clamp(n: number, min: number, max: number) {
 }
 
 export default function EditorMode() {
-  const [players, setPlayers] = useState<PlayerTokenType[]>([]);
-  const [cones, setCones] = useState<ConeTokenType[]>([]);
+  const [players, setPlayers] = useState<PlayerToken[]>([]);
+  const [cones, setCones] = useState<ConeToken[]>([]);
   const nextId = useRef(1);
 
   // Responsive scaling + collapsing left panel

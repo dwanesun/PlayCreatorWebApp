@@ -1,6 +1,6 @@
 export type Team = "offense" | "defense";
 
-export type PlayerTokenType = {
+export type PlayerToken = {
   id: string;
   team: Team;
   number: 1 | 2 | 3 | 4 | 5;
