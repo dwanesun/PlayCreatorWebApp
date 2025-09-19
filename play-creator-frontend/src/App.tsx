@@ -1,4 +1,4 @@
-﻿import EditorMode from "./pages/editor_mode";
+﻿import EditorMode from "./pages/EditorMode.tsx";
 
 export default function App() {
   return <EditorMode />;

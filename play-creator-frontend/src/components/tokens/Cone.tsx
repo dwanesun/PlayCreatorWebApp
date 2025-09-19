@@ -1,7 +1,7 @@
 // src/components/tokens/ConeToken.tsx
 import { Group, Line, Rect } from "react-konva";
 
-export function ConeToken(props: {
+export function Cone(props: {
   x: number; y: number; radius?: number;
   draggable?: boolean;
   onDragMove?: (e: any) => void;
