@@ -1,9 +1,9 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import { Stage, Rect, Layer } from "react-konva";
 import { HalfCourt } from "../components/court/HalfCourt.tsx";
-import { OffenseO } from "../components/tokens/OffenseO";
-import { DefenseX } from "../components/tokens/DefenseX";
-import { ConeToken } from "../components/tokens/ConeToken";
+import { OffensivePlayer } from "../components/tokens/OffensivePlayer.tsx";
+import { DefensivePlayer } from "../components/tokens/DefensivePlayer.tsx";
+import { Cone } from "../components/tokens/Cone.tsx";
 import type { PlayerTokenType } from "../components/tokens/PlayerTokenType";
 import type { ConeTokenType } from "../components/tokens/ConeTokenType";
 import {
@@ -269,9 +269,9 @@ export default function EditorMode() {
                 onDragEnd: () => (document.body.style.cursor = "default"),
               };
               return p.team === "offense" ? (
-                <OffenseO key={p.id} x={p.x} y={p.y} number={p.number} {...handlers} />
+                <OffensivePlayer key={p.id} x={p.x} y={p.y} number={p.number} {...handlers} />
               ) : (
-                <DefenseX key={p.id} x={p.x} y={p.y} number={p.number} {...handlers} />
+                <DefensivePlayer key={p.id} x={p.x} y={p.y} number={p.number} {...handlers} />
               );
             })}
 
@@ -290,7 +290,7 @@ export default function EditorMode() {
                 onDragStart: () => (document.body.style.cursor = "grabbing"),
                 onDragEnd: () => (document.body.style.cursor = "default"),
               };
-              return <ConeToken key={c.id} x={c.x} y={c.y} {...handlers} />;
+              return <Cone key={c.id} x={c.x} y={c.y} {...handlers} />;
             })}
           </Layer>
         </Stage>

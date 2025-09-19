@@ -1,7 +1,7 @@
 // src/components/tokens/OffenseO.tsx
 import { Group, Circle, Text } from "react-konva";
 
-export function OffenseO(props: {
+export function OffensivePlayer(props: {
   x: number; y: number; number: number; radius?: number;
   draggable?: boolean;
   onDragMove?: (e: any) => void;

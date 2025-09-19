@@ -1,7 +1,7 @@
 // src/components/tokens/DefenseX.tsx
 import { Group, Line, Text } from "react-konva";
 
-export function DefenseX(props: {
+export function DefensivePlayer(props: {
   x: number; y: number; number: number; size?: number; strokeWidth?: number;
   draggable?: boolean;
   onDragMove?: (e: any) => void;
