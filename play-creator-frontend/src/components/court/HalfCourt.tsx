@@ -7,6 +7,8 @@ import {
     ftLineY, ftCircleR, threeR,
 } from "../geometry/CourtGeometryUtils";
 
+import type { JSX } from "react";
+
 export function HalfCourt() {
     // Vertical planks with consistent size, staggered like brickwork:
     const plankWidth = 14;     // px: board width across x-axis (column width)

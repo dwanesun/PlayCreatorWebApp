@@ -1,4 +1,3 @@
-// src/pages/EditorMode.tsx
 import { useMemo, useRef, useState, useEffect } from "react";
 import { Stage, Rect, Layer } from "react-konva";
 import { HalfCourt } from "../components/court/HalfCourt.tsx";
