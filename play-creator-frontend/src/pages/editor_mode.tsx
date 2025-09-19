@@ -113,6 +113,19 @@ export default function EditorMode() {
           <Layer>
             <Rect x={0} y={0} width={STAGE_WIDTH} height={STAGE_HEIGHT} fill="#ffffff" />
           </Layer>
+
+          {/* Canvas border (separate from the court/out-of-bounds) */}
+          <Layer>
+            <Rect
+              x={0.5}
+              y={0.5}
+              width={STAGE_WIDTH - 1}
+              height={STAGE_HEIGHT - 1}
+              stroke="#94a3b8"        // slate-400
+              strokeWidth={2}
+              cornerRadius={8}
+            />
+          </Layer>
           {/* Court (already returns a Layer internally) */}
           <CourtHalf />
 
