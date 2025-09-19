@@ -14,67 +14,62 @@ export type DribbleModel = {
 
 export type PlayerRef = { id: string; team: "offense" | "defense"; x: number; y: number };
 
-function clamp(n: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, n));
-}
-
-function dist2(a: Point, b: Point) {
-  const dx = a.x - b.x;
-  const dy = a.y - b.y;
-  return dx * dx + dy * dy;
-}
-
-function projectParamT(p: Point, a: Point, b: Point) {
-  const vx = b.x - a.x;
-  const vy = b.y - a.y;
-  const wx = p.x - a.x;
-  const wy = p.y - a.y;
-  const denom = vx * vx + vy * vy || 1;
-  return clamp((vx * wx + vy * wy) / denom, 0, 1);
-}
-
-function signedOffsetFromLine(p: Point, a: Point, b: Point) {
-  const vx = b.x - a.x;
-  const vy = b.y - a.y;
-  const wx = p.x - a.x;
-  const wy = p.y - a.y;
-  // 2D cross gives signed area; normalize by |v| for a signed distance-esque value
-  const len = Math.hypot(vx, vy) || 1;
-  return (vx * wy - vy * wx) / len;
-}
-
 function lerp(a: Point, b: Point, t: number): Point {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
 
-// Make a squiggly polyline between start and end.
-// Peak curvature is centered at mid.t with amplitude ~ mid.offset using a smooth bell weight.
+// Quadratic Bezier helpers for global arc control
+function quadPoint(a: Point, c: Point, b: Point, t: number): Point {
+  const u = 1 - t;
+  // P(t) = u^2*A + 2*u*t*C + t^2*B
+  return {
+    x: u * u * a.x + 2 * u * t * c.x + t * t * b.x,
+    y: u * u * a.y + 2 * u * t * c.y + t * t * b.y,
+  };
+}
+
+function quadTangent(a: Point, c: Point, b: Point, t: number): Point {
+  // P'(t) = 2*(1-t)*(C-A) + 2*t*(B-C)
+  const u = 1 - t;
+  return {
+    x: 2 * u * (c.x - a.x) + 2 * t * (b.x - c.x),
+    y: 2 * u * (c.y - a.y) + 2 * t * (b.y - c.y),
+  };
+}
+// Build a polyline along a quadratic centerline (global arc).
+// Then apply a small sinusoidal offset along the local normal to form the "squiggle".
+// The squiggle spacing is ~16px between peaks, independent of the midpoint bend.
 function buildDribblePolyline(start: Point, end: Point, mid: { t: number; offset: number }): number[] {
-  const N = 40; // segments
+  // Control point derived from a straight line with midpoint offset along straight normal.
   const vx = end.x - start.x;
   const vy = end.y - start.y;
-  const len = Math.hypot(vx, vy) || 1;
-  const nx = -vy / len; // left normal
-  const ny = vx / len;
+  const L = Math.hypot(vx, vy) || 1;
+  const nx = -vy / L;
+  const ny = vx / L;
+  const base = lerp(start, end, mid.t);
+  const control: Point = { x: base.x + nx * mid.offset, y: base.y + ny * mid.offset };
 
-  // Frequency roughly scales with length; keep readable
-  const waves = Math.max(1, Math.floor(len / 120));
+  // Squiggle configuration
+  const wavelength = 16;       // px between peaks
+  const waves = Math.max(1, Math.floor(L / wavelength));
   const freq = Math.PI * 2 * waves;
+  const amp = 5;               // fixed small amplitude (px), keeps the line "straight but squiggly"
 
-  // Gaussian weight centered at mid.t to localize squiggle emphasis
-  const sigma = 0.18;
-  const gaussian = (t: number) => Math.exp(-0.5 * Math.pow((t - mid.t) / sigma, 2));
-
-  const amp = clamp(Math.abs(mid.offset), 0, 50); // cap amplitude for readability
-  const sign = Math.sign(mid.offset) || 1;
+  const N = Math.max(24, Math.min(100, Math.floor(L / 8))); // segment density vs length
 
   const pts: number[] = [];
   for (let i = 0; i <= N; i++) {
     const t = i / N;
-    const base = lerp(start, end, t);
-    const localAmp = amp * gaussian(t);
-    const s = Math.sin(t * freq) * localAmp * sign;
-    pts.push(base.x + nx * s, base.y + ny * s);
+
+    // Centerline point and local normal from a quadratic curve
+    const p = quadPoint(start, control, end, t);
+    const tan = quadTangent(start, control, end, t);
+    const tl = Math.hypot(tan.x, tan.y) || 1;
+    const n = { x: -tan.y / tl, y: tan.x / tl };
+
+    // Apply a small sinusoidal offset along the normal with fixed amplitude
+    const s = Math.sin(t * freq) * amp;
+    pts.push(p.x + n.x * s, p.y + n.y * s);
   }
   return pts;
 }
@@ -97,6 +92,8 @@ export function DribblePath(props: {
   }
 
   const endPoint = model.end;
+
+  // Now: global arc determined by midpoint; squiggle overlays but is straight by default (offset=0)
   const poly = buildDribblePolyline(startPoint, endPoint, model.mid);
 
   const onStartDragMove = (evt: any) => {

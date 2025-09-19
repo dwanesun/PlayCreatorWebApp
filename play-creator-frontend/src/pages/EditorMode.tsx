@@ -106,7 +106,8 @@ export default function EditorMode() {
       id: `drb-${nextId.current++}`,
       start: selected ? { kind: "player", playerId: selected.id } : { kind: "free", point: startPoint },
       end: endPoint,
-      mid: { t: 0.5, offset: 24 },
+      // Start straight (offset 0). User can bend globally with the midpoint handle.
+      mid: { t: 0.5, offset: 0 },
     };
     setDribbles((prev) => [...prev, model]);
     setTool("dribble");
