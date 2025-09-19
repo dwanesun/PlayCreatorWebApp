@@ -23,9 +23,17 @@ export function CourtHalf() {
         "#f4d7b3", "#f2d0a6",
     ];
 
-    // Deterministic shade per (column,row) for pleasing variety
-    const pickShade = (col: number, rowIndex: number) =>
-        woodShades[(col * 7 + rowIndex * 5) % woodShades.length];
+    // Helpers for deterministic pseudo-randomness (reduces visible patterns at baseline)
+    const fractionalPart = (n: number) => n - Math.floor(n);
+    const rand01 = (a: number, b: number) => fractionalPart(Math.sin(a * 127.1 + b * 311.7) * 43758.5453);
+
+    // Shade picker: uses a hash of (column, row) to distribute shades more uniformly,
+    // so the first row (baseline) doesn't cluster darker tones.
+    const pickShade = (col: number, rowIndex: number) => {
+        const r = rand01(col + 0.37, rowIndex + 0.91);
+        const idx = Math.floor(r * woodShades.length);
+        return woodShades[idx];
+    };
 
     // Slight per-plank gradient to simulate grain/light
     const gradientStops = (depth = 0.06) => [
