@@ -1,6 +1,6 @@
 import { ActionPath, type BaseActionModel, type PlayerRef, type Point, type LineStyle } from "./ActionPath";
 
-// Cut model extends base action model
+// Cut model extends a base action model
 export type CutModel = BaseActionModel;
 
 // Cut-specific line style (solid, no squiggles)

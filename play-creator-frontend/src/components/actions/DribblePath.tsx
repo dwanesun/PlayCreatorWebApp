@@ -7,7 +7,7 @@ const DRIBBLE_CONFIG = {
     SQUIGGLE_SEGMENTS_PER_WAVE: 8, // segments per wave for smoothness
 };
 
-// Dribble model extends base action model
+// Dribble model extends a base action model
 export type DribbleModel = BaseActionModel;
 
 // Dribble-specific line style

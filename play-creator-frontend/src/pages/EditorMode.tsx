@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState, useEffect } from "react";
+import React, { useMemo, useRef, useState, useEffect } from "react";
 import { Stage, Rect, Layer } from "react-konva";
 import { HalfCourt } from "../components/court/HalfCourt.tsx";
 import { OffensivePlayer } from "../components/tokens/OffensivePlayer.tsx";
@@ -8,6 +8,7 @@ import type { PlayerToken } from "../components/tokens/PlayerToken.ts";
 import type { ConeToken } from "../components/tokens/ConeToken.ts";
 import { DribblePath, type DribbleModel } from "../components/actions/DribblePath.tsx";
 import { CutPath, type CutModel } from "../components/actions/CutPath.tsx";
+import { PassPath, type PassModel } from "../components/actions/PassPath.tsx";
 import {
   STAGE_WIDTH,
   STAGE_HEIGHT,
@@ -33,13 +34,12 @@ export default function EditorMode() {
 
   // Selection and tools (allow selecting a player for auto-attach)
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [tool, setTool] = useState<"none" | "dribble">("none");
+  const [tool, setTool] = useState<"none" | "dribble" | "cut" | "pass">("none");
 
-  // Dribble paths
+  // Actions
   const [dribbles, setDribbles] = useState<DribbleModel[]>([]);
-
-  // Add to state
   const [cuts, setCuts] = useState<CutModel[]>([]);
+  const [passes, setPasses] = useState<PassModel[]>([]);
 
   const [scale, setScale] = useState(1);
   const [leftVisible, setLeftVisible] = useState(true);
@@ -90,7 +90,7 @@ export default function EditorMode() {
     return () => ro.disconnect();
   }, []);
 
-  // Convert client to world coordinates using current stage scale and position
+  // Convert client to world coordinates using the current stage scale and position
   const toWorld = (clientX: number, clientY: number) => {
     const stage = stageRef.current;
     if (!stage) return { x: 0, y: 0 };
@@ -99,7 +99,7 @@ export default function EditorMode() {
     return { x: (clientX - rect.left) / s, y: (clientY - rect.top) / s };
   };
 
-  // Add dribble – auto-attach to selected offense player if any
+  // Add dribble – auto-attach to a selected offense player if any
   const addDribble = () => {
     const selected = players.find((p) => p.id === selectedPlayerId && p.team === "offense");
     const startPoint = selected
@@ -134,6 +134,23 @@ export default function EditorMode() {
     setTool("cut");
   };
 
+  // Add pass handler
+  const addPass = () => {
+    const selected = players.find((p) => p.id === selectedPlayerId && p.team === "offense");
+    const startPoint = selected
+      ? { x: selected.x, y: selected.y }
+      : { x: COURT_X + COURT_WIDTH * 0.35, y: COURT_Y + COURT_HEIGHT * 0.45 };
+    const endPoint = { x: startPoint.x + 120, y: startPoint.y - 40 };
+    const model: PassModel = {
+      id: `pass-${nextId.current++}`,
+      start: selected ? { kind: "player", playerId: selected.id } : { kind: "free", point: startPoint },
+      end: endPoint,
+      mid: { t: 0.5, offset: 0 },
+    };
+    setPasses((prev) => [...prev, model]);
+    setTool("pass");
+  };
+
   const updateDribble = (id: string, updater: (m: DribbleModel) => DribbleModel) => {
     setDribbles((prev) => prev.map((d) => (d.id === id ? updater(d) : d)));
   };
@@ -154,7 +171,7 @@ export default function EditorMode() {
     y: clamp(y, radius, STAGE_HEIGHT - radius),
   });
 
-  // Helpers to support drag from toolbox
+  // Helpers to support drag from the toolbox
   type DragToken =
     | { kind: "player"; team: "offense" | "defense"; number: 1 | 2 | 3 | 4 | 5 }
     | { kind: "cone" };
@@ -380,6 +397,19 @@ export default function EditorMode() {
               return <Cone key={c.id} x={c.x} y={c.y} {...handlers} />;
             })}
           </Layer>
+
+          {/* Render Passes Layer */}
+          <Layer>
+            {passes.map((p) => (
+              <PassPath
+                key={p.id}
+                model={p}
+                offensePlayers={players.filter((p) => p.team === "offense")}
+                toWorld={toWorld}
+                onChange={(next) => setPasses((prev) => prev.map((ps) => (ps.id === p.id ? next : ps)))}
+              />
+            ))}
+          </Layer>
         </Stage>
       </div>
 
@@ -429,8 +459,23 @@ export default function EditorMode() {
             >
               Cut
             </button>
+            <button
+              onClick={addPass}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: tool === "pass" ? "2px solid #0f172a" : "1px solid #0f172a",
+                background: "#ffffff",
+                color: "#0f172a",
+                cursor: "pointer",
+                fontWeight: tool === "pass" ? "bold" : "normal",
+              }}
+              title="Pass (start attaches to selected offense player if any)"
+            >
+              Pass
+            </button>
             {/* keep other actions disabled for now */}
-            {["Pass", "Screen", "Shot", "Handoff"].map((label) => (
+            {["Screen", "Shot", "Handoff"].map((label) => (
               <button
                 key={label}
                 style={{
