@@ -145,13 +145,29 @@ export function DribblePath(props: {
     const nx = -vy / (len || 1);
     const ny = vx / (len || 1);
     const along = { x: startPoint.x + vx * t, y: startPoint.y + vy * t };
-    const offset = Math.max(-80, Math.min(80, (x - along.x) * nx + (y - along.y) * ny));
+    const offset = Math.max(-200, Math.min(200, (x - along.x) * nx + (y - along.y) * ny));
     onChange({ ...model, mid: { t, offset } });
   };
 
   const rStart = 8;
   const rMid = 7;
   const rEnd = 9;
+
+  // Calculate the actual midpoint position on the quadratic curve for rendering the handle
+  const getMidpointPosition = () => {
+    const vx = endPoint.x - startPoint.x;
+    const vy = endPoint.y - startPoint.y;
+    const len = Math.hypot(vx, vy) || 1;
+    const nx = -vy / len;
+    const ny = vx / len;
+    const base = lerp(startPoint, endPoint, model.mid.t);
+    const control: Point = { x: base.x + nx * model.mid.offset, y: base.y + ny * model.mid.offset };
+    
+    // Position the handle at t=0.5 along the quadratic curve (actual midpoint of the curve)
+    return quadPoint(startPoint, control, endPoint, 0.5);
+  };
+
+  const midPos = getMidpointPosition();
 
   // Return a Group (NOT a Layer) so it can be placed inside an existing Layer
   return (
@@ -182,31 +198,20 @@ export function DribblePath(props: {
         onDragStart={() => (document.body.style.cursor = "grabbing")}
         onDragEnd={() => (document.body.style.cursor = "default")}
       />
-      {(() => {
-        const vx = endPoint.x - startPoint.x;
-        const vy = endPoint.y - startPoint.y;
-        const len = Math.hypot(vx, vy) || 1;
-        const nx = -vy / len;
-        const ny = vx / len;
-        const mx = startPoint.x + vx * model.mid.t + nx * model.mid.offset;
-        const my = startPoint.y + vy * model.mid.t + ny * model.mid.offset;
-        return (
-          <Circle
-            x={mx}
-            y={my}
-            radius={rMid}
-            fill="#f59e0b"
-            stroke="#7c2d12"
-            strokeWidth={2}
-            draggable
-            onDragMove={onMidDragMove}
-            onMouseEnter={() => (document.body.style.cursor = "grab")}
-            onMouseLeave={() => (document.body.style.cursor = "default")}
-            onDragStart={() => (document.body.style.cursor = "grabbing")}
-            onDragEnd={() => (document.body.style.cursor = "default")}
-          />
-        );
-      })()}
+      <Circle
+        x={midPos.x}
+        y={midPos.y}
+        radius={rMid}
+        fill="#f59e0b"
+        stroke="#7c2d12"
+        strokeWidth={2}
+        draggable
+        onDragMove={onMidDragMove}
+        onMouseEnter={() => (document.body.style.cursor = "grab")}
+        onMouseLeave={() => (document.body.style.cursor = "default")}
+        onDragStart={() => (document.body.style.cursor = "grabbing")}
+        onDragEnd={() => (document.body.style.cursor = "default")}
+      />
       <Circle
         x={endPoint.x}
         y={endPoint.y}
