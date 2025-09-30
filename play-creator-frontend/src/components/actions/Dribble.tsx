@@ -49,13 +49,26 @@ function buildDribblePolyline(start: Point, end: Point, mid: { t: number; offset
   const base = lerp(start, end, mid.t);
   const control: Point = { x: base.x + nx * mid.offset, y: base.y + ny * mid.offset };
 
-  // Squiggle configuration
+  // First pass: measure the arc length along the curve
+  const measureSteps = 100;
+  let arcLength = 0;
+  let prevP = quadPoint(start, control, end, 0);
+  for (let i = 1; i <= measureSteps; i++) {
+    const t = i / measureSteps;
+    const p = quadPoint(start, control, end, t);
+    arcLength += Math.hypot(p.x - prevP.x, p.y - prevP.y);
+    prevP = p;
+  }
+
+  // Squiggle configuration based on actual arc length
   const wavelength = 16;       // px between peaks
-  const waves = Math.max(1, Math.floor(L / wavelength));
+  const waves = arcLength / wavelength;  // use fractional waves
   const freq = Math.PI * 2 * waves;
   const amp = 5;               // fixed small amplitude (px), keeps the line "straight but squiggly"
 
-  const N = Math.max(24, Math.min(100, Math.floor(L / 8))); // segment density vs length
+  // Higher segment density for smooth sine waves: aim for ~8 segments per wavelength
+  const segmentsPerWave = 8;
+  const N = Math.max(32, Math.ceil(waves * segmentsPerWave));
 
   const pts: number[] = [];
   for (let i = 0; i <= N; i++) {
