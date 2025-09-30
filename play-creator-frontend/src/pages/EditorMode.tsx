@@ -7,6 +7,7 @@ import { Cone } from "../components/tokens/Cone.tsx";
 import type { PlayerToken } from "../components/tokens/PlayerToken.ts";
 import type { ConeToken } from "../components/tokens/ConeToken.ts";
 import { DribblePath, type DribbleModel } from "../components/actions/DribblePath.tsx";
+import { CutPath, type CutModel } from "../components/actions/CutPath.tsx";
 import {
   STAGE_WIDTH,
   STAGE_HEIGHT,
@@ -36,6 +37,9 @@ export default function EditorMode() {
 
   // Dribble paths
   const [dribbles, setDribbles] = useState<DribbleModel[]>([]);
+
+  // Add to state
+  const [cuts, setCuts] = useState<CutModel[]>([]);
 
   const [scale, setScale] = useState(1);
   const [leftVisible, setLeftVisible] = useState(true);
@@ -111,6 +115,23 @@ export default function EditorMode() {
     };
     setDribbles((prev) => [...prev, model]);
     setTool("dribble");
+  };
+
+  // Add handler
+  const addCut = () => {
+    const selected = players.find((p) => p.id === selectedPlayerId && p.team === "offense");
+    const startPoint = selected
+      ? { x: selected.x, y: selected.y }
+      : { x: COURT_X + COURT_WIDTH * 0.35, y: COURT_Y + COURT_HEIGHT * 0.45 };
+    const endPoint = { x: startPoint.x + 120, y: startPoint.y - 40 };
+    const model: CutModel = {
+      id: `cut-${nextId.current++}`,
+      start: selected ? { kind: "player", playerId: selected.id } : { kind: "free", point: startPoint },
+      end: endPoint,
+      mid: { t: 0.5, offset: 0 },
+    };
+    setCuts((prev) => [...prev, model]);
+    setTool("cut");
   };
 
   const updateDribble = (id: string, updater: (m: DribbleModel) => DribbleModel) => {
@@ -304,6 +325,19 @@ export default function EditorMode() {
             ))}
           </Layer>
 
+          {/* Render in Layer */}
+          <Layer>
+            {cuts.map((c) => (
+              <CutPath
+                key={c.id}
+                model={c}
+                offensePlayers={players.filter((p) => p.team === "offense")}
+                toWorld={toWorld}
+                onChange={(next) => setCuts((prev) => prev.map((ct) => (ct.id === c.id ? next : ct)))}
+              />
+            ))}
+          </Layer>
+
           <Layer>
             {players.map((p) => {
               const radius = 20;
@@ -374,13 +408,29 @@ export default function EditorMode() {
                 background: "#ffffff",
                 color: "#0f172a",
                 cursor: "pointer",
+                fontWeight: tool === "dribble" ? "bold" : "normal",
               }}
               title="Dribble (start attaches to selected offense player if any)"
             >
               Dribble
             </button>
+            <button
+              onClick={addCut}
+              style={{
+                padding: "6px 10px",
+                borderRadius: 6,
+                border: tool === "cut" ? "2px solid #0f172a" : "1px solid #0f172a",
+                background: "#ffffff",
+                color: "#0f172a",
+                cursor: "pointer",
+                fontWeight: tool === "cut" ? "bold" : "normal",
+              }}
+              title="Cut (start attaches to selected offense player if any)"
+            >
+              Cut
+            </button>
             {/* keep other actions disabled for now */}
-            {["Pass", "Cut", "Screen", "Shot", "Handoff"].map((label) => (
+            {["Pass", "Screen", "Shot", "Handoff"].map((label) => (
               <button
                 key={label}
                 style={{

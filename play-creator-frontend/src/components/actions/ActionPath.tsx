@@ -29,12 +29,12 @@ export type PlayerRef = {
 // ============================================================================
 
 export const ACTION_CONFIG = {
-        MAX_CURVE_OFFSET: 800,        // px maximum offset from straight line
+        MAX_CURVE_OFFSET: 800,        // px maximum offset from a straight line
         ARROW_LENGTH: 12,             // px length of arrow head
         ARROW_WIDTH: 12,              // px width of arrow head
-        START_HANDLE_RADIUS: 8,       // px radius of start handle
-        MID_HANDLE_RADIUS: 7,         // px radius of midpoint handle
-        END_HANDLE_RADIUS: 9,         // px radius of end handle
+        START_HANDLE_RADIUS: 8,       // px radius of a start handle
+        MID_HANDLE_RADIUS: 7,         // px radius of a midpoint handle
+        END_HANDLE_RADIUS: 9,         // px radius of an end handle
         SNAP_RADIUS: 28,              // px snap distance to player
 };
 
@@ -107,12 +107,12 @@ lineStyle: LineStyle
         return buildSquigglePolyline(start, end, control, lineStyle);
     }
 
-    // For solid or dashed lines, use simple curve
+    // For solid or dashed lines, use a simple curve
     return buildSimplePolyline(start, end, control);
 }
 
 function buildSimplePolyline(start: Point, end: Point, control: Point): number[] {
-    const N = 50; // segments for smooth curve
+    const N = 50; // segments for a smooth curve
     const pts: number[] = [];
     for (let i = 0; i <= N; i++) {
     const t = i / N;
@@ -172,7 +172,7 @@ export function ActionPath<T extends BaseActionModel>(props: BaseActionPathProps
         strokeWidth = 3,
     } = props;
 
-    // Resolve start point
+    // Resolve the start point
     let startPoint: Point;
     if (model.start.kind === "player") {
         const p = offensePlayers.find((pp) => pp.id === model.start.playerId);
