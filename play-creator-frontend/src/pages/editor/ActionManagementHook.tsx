@@ -32,7 +32,7 @@ export function useActionManagement(
 
   // Generic action creation helper
   const createActionModel = useCallback(
-    <T extends BaseActionModel>(type: ActionType, idPrefix: string): T => {
+    <T extends BaseActionModel>(_type: ActionType, idPrefix: string): T => {
       const selected = players.find(
         (p) => p.id === selectedPlayerId && p.team === "offense"
       );
@@ -53,7 +53,7 @@ export function useActionManagement(
     [players, selectedPlayerId]
   );
 
-  // Generic action add handler
+  // Generic action adds handler
   const addAction = useCallback(
     (type: ActionType) => {
       const config = ACTION_CONFIGS[type];

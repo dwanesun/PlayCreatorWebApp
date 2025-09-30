@@ -18,7 +18,7 @@ import {
 
 interface CanvasProps {
   stageRef: React.RefObject<any>;
-  centerRef: React.RefObject<HTMLDivElement>;
+  centerRef: React.RefObject<any>;
   scale: number;
   players: PlayerToken[];
   cones: ConeToken[];
@@ -49,7 +49,6 @@ export function Canvas({
   players,
   cones,
   actions,
-  selectedPlayerId,
   onSelectPlayer,
   onUpdatePlayer,
   onUpdateCone,

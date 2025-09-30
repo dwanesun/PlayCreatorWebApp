@@ -202,7 +202,7 @@ function buildSquigglePolyline(
     const tl = Math.hypot(tan.x, tan.y) || 1;
     const n = { x: -tan.y / tl, y: tan.x / tl };
 
-    // Apply sinusoidal offset based on arc length fraction, not t
+    // Apply sinusoidal offset based on an arc length fraction, not t
     const s = Math.sin(arcLengthFraction * freq) * style.amplitude;
     pts.push(p.x + n.x * s, p.y + n.y * s);
   }
@@ -228,11 +228,11 @@ export function ActionPath<T extends BaseActionModel>(
     strokeWidth = 3,
   } = props;
 
-  // Track if midpoint is being dragged
+  // Track if the midpoint is being dragged
   const [isDraggingMid, setIsDraggingMid] = React.useState(false);
   const dragPosRef = React.useRef<Point | null>(null);
 
-  // Resolve start point
+  // Resolve the start point
   let startPoint: Point;
   if (model.start.kind === "player") {
     const p = offensePlayers.find((pp) => pp.id === model.start.playerId);
