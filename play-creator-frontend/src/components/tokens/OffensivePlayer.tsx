@@ -13,8 +13,8 @@ export function OffensivePlayer(props: {
   const { x, y, number, radius = 20, ...handlers } = props;
   return (
     <Group x={x} y={y} {...handlers}>
-      <Circle radius={radius} stroke="#000" strokeWidth={3} fillEnabled={false} shadowBlur={2} />
-      <Text text={String(number)} fill="#000" fontStyle="bold" fontSize={16} x={-6} y={-8} />
+      <Circle radius={radius} stroke="#000" strokeWidth={2} fillEnabled={false} shadowBlur={2} />
+      <Text text={String(number)} fill="#000" fontSize={20} x={-7} y={-9} />
     </Group>
   );
 }
