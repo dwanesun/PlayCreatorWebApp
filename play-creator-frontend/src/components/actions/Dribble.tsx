@@ -15,10 +15,12 @@ export type DribbleModel = {
 export type PlayerRef = { id: string; team: "offense" | "defense"; x: number; y: number };
 
 // Dribble configuration constants
-const SQUIGGLE_WAVELENGTH = 16;       // px between squiggle peaks
-const SQUIGGLE_AMPLITUDE = 5;         // px height of squiggle wave
+const SQUIGGLE_WAVELENGTH = 26;       // px between squiggle peaks (distance between waves)
+const SQUIGGLE_AMPLITUDE = 6;         // px height of squiggle wave (increased from 5 for more visibility)
 const SQUIGGLE_SEGMENTS_PER_WAVE = 8; // number of line segments per wave (for smoothness)
 const MAX_CURVE_OFFSET = 800;         // px maximum offset from straight line (controls curve limit)
+const ARROW_LENGTH = 12;              // px length of arrow head
+const ARROW_WIDTH = 12;               // px width of arrow head
 
 function lerp(a: Point, b: Point, t: number): Point {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
