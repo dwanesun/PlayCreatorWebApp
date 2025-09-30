@@ -178,17 +178,42 @@ export function DribblePath(props: {
   return (
     <Group>
       <Line points={poly} stroke="#0f172a" strokeWidth={3} listening={false} />
-      {poly.length >= 4 && (
-        <Arrow
-          points={[poly[poly.length - 4], poly[poly.length - 3], poly[poly.length - 2], poly[poly.length - 1]]}
-          pointerLength={12}
-          pointerWidth={12}
-          fill="#0f172a"
-          stroke="#0f172a"
-          strokeWidth={3}
-          listening={false}
-        />
-      )}
+      {/* Arrow pointing directly to endpoint */}
+      {(() => {
+        // Calculate the control point for the quadratic curve
+        const vx = endPoint.x - startPoint.x;
+        const vy = endPoint.y - startPoint.y;
+        const len = Math.hypot(vx, vy) || 1;
+        const nx = -vy / len;
+        const ny = vx / len;
+        const base = lerp(startPoint, endPoint, model.mid.t);
+        const control: Point = { x: base.x + nx * model.mid.offset, y: base.y + ny * model.mid.offset };
+        
+        // Get a point just before the end (at t=0.95) to calculate direction
+        const beforeEnd = quadPoint(startPoint, control, endPoint, 0.95);
+        
+        // Calculate direction vector from the point before end to the actual endpoint
+        const dx = endPoint.x - beforeEnd.x;
+        const dy = endPoint.y - beforeEnd.y;
+        const dirLen = Math.hypot(dx, dy) || 1;
+        
+        // Position arrow start slightly before endpoint
+        const arrowDist = ARROW_LENGTH * 0.8;
+        const arrowStartX = endPoint.x - (dx / dirLen) * arrowDist;
+        const arrowStartY = endPoint.y - (dy / dirLen) * arrowDist;
+        
+        return (
+          <Arrow
+            points={[arrowStartX, arrowStartY, endPoint.x, endPoint.y]}
+            pointerLength={ARROW_LENGTH}
+            pointerWidth={ARROW_WIDTH}
+            fill="#0f172a"
+            stroke="#0f172a"
+            strokeWidth={3}
+            listening={false}
+          />
+        );
+      })()}
       <Circle
         x={startPoint.x}
         y={startPoint.y}
