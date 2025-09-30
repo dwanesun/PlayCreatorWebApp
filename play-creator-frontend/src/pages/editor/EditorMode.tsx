@@ -1,19 +1,19 @@
 import { useMemo, useRef, useState } from "react";
-import type { PlayerToken } from "../components/tokens/PlayerToken.ts";
-import type { ConeToken } from "../components/tokens/ConeToken.ts";
-import { Canvas } from "./editor/CanvasComponent.tsx";
-import { Toolbox } from "./editor/ToolboxComponent.tsx";
-import { useResponsiveScale } from "./editor/ResponsiveScaleHook.tsx";
-import { useCanvasUtils } from "./editor/CanvasUtilities.tsx";
-import { useActionManagement } from "./editor/ActionManagementHook.tsx";
-import { useDragDrop } from "./editor/DragDropUtility.tsx";
+import type { PlayerToken } from "../../components/tokens/PlayerToken.ts";
+import type { ConeToken } from "../../components/tokens/ConeToken.ts";
+import { Canvas } from "./CanvasComponent.tsx";
+import { Toolbox } from "./ToolboxComponent.tsx";
+import { useResponsiveScale } from "./ResponsiveScaleHook.tsx";
+import { useCanvasUtils } from "./CanvasUtilities.tsx";
+import { useActionManagement } from "./ActionManagementHook.tsx";
+import { useDragDrop } from "./DragDropUtility.tsx";
 import {
     STAGE_HEIGHT,
     COURT_WIDTH,
     COURT_HEIGHT,
     COURT_X,
     COURT_Y,
-} from "../components/geometry/CourtGeometryUtils";
+} from "../../components/geometry/CourtGeometryUtils.ts";
 
 export default function EditorMode() {
     const [players, setPlayers] = useState<PlayerToken[]>([]);
