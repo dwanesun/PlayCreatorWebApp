@@ -40,8 +40,16 @@ export function Toolbox({
         flexShrink: 0,
       }}
     >
+      {/* Actions Section */}
       <section>
-        <h3 style={{ marginTop: 0, marginBottom: 8 }}>Add Actions</h3>
+        <h3 style={{ 
+          margin: "0 0 8px 0",
+          fontSize: "15px",
+          fontWeight: 600,
+          color: "#1f2937",
+        }}>
+          Add Actions
+        </h3>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
           {Object.values(ACTION_CONFIGS).map((config) => (
             <button
@@ -50,12 +58,12 @@ export function Toolbox({
               style={{
                 padding: "6px 10px",
                 borderRadius: 6,
-                border:
-                  tool === config.type ? "2px solid #0f172a" : "1px solid #0f172a",
-                background: "#ffffff",
-                color: "#0f172a",
+                border: "none",
+                background: "#0f172a",
+                color: "#ffffff",
                 cursor: "pointer",
                 fontWeight: tool === config.type ? "bold" : "normal",
+                boxShadow: tool === config.type ? "0 0 0 2px #0f172a, 0 0 0 4px #60a5fa" : "none",
               }}
               title={config.title}
             >
@@ -83,13 +91,28 @@ export function Toolbox({
         </div>
       </section>
 
-      <div style={{ height: 1, background: "#eee", margin: "12px 0" }} />
+      <div style={{ height: 1, background: "#e5e7eb", margin: "16px 0" }} />
 
+      {/* Players Section */}
       <section>
-        <h3 style={{ margin: 0, marginBottom: 8 }}>Add Players</h3>
+        <h3 style={{ 
+          margin: "0 0 8px 0",
+          fontSize: "15px",
+          fontWeight: 600,
+          color: "#1f2937",
+        }}>
+          Add Players
+        </h3>
 
-        <div style={{ marginBottom: 10 }}>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>Offense (O)</div>
+        <div style={{ marginBottom: 8 }}>
+          <div style={{ 
+            fontWeight: 500,
+            fontSize: "13px",
+            marginBottom: 6,
+            color: "#4b5563",
+          }}>
+            Offense (O)
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
             {[1, 2, 3, 4, 5].map((n) => (
               <button
@@ -126,7 +149,14 @@ export function Toolbox({
         </div>
 
         <div>
-          <div style={{ fontWeight: 600, marginBottom: 6 }}>Defense (X)</div>
+          <div style={{ 
+            fontWeight: 500,
+            fontSize: "13px",
+            marginBottom: 6,
+            color: "#4b5563",
+          }}>
+            Defense (X)
+          </div>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 6 }}>
             {[1, 2, 3, 4, 5].map((n) => (
               <button
@@ -148,7 +178,6 @@ export function Toolbox({
                   background: "#fdecea",
                   color: "#972c23",
                   cursor: "grab",
-                  aspectRatio: "1",
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
@@ -179,10 +208,18 @@ export function Toolbox({
         </div>
       </section>
 
-      <div style={{ height: 1, background: "#eee", margin: "12px 0" }} />
+      <div style={{ height: 1, background: "#e5e7eb", margin: "16px 0" }} />
 
+      {/* Misc Section */}
       <section>
-        <h3 style={{ margin: 0, marginBottom: 8 }}>Add misc</h3>
+        <h3 style={{ 
+          margin: "0 0 8px 0",
+          fontSize: "15px",
+          fontWeight: 600,
+          color: "#1f2937",
+        }}>
+          Misc
+        </h3>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
           <button
             draggable
