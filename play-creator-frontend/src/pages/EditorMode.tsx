@@ -9,6 +9,7 @@ import type { ConeToken } from "../components/tokens/ConeToken.ts";
 import { DribblePath, type DribbleModel } from "../components/actions/DribblePath.tsx";
 import { CutPath, type CutModel } from "../components/actions/CutPath.tsx";
 import { PassPath, type PassModel } from "../components/actions/PassPath.tsx";
+import type { BaseActionModel } from "../components/actions/ActionPath.tsx";
 import {
   STAGE_WIDTH,
   STAGE_HEIGHT,
@@ -22,6 +23,49 @@ function clamp(n: number, min: number, max: number) {
   return Math.max(min, Math.min(max, n));
 }
 
+// Action type union
+type ActionType = "dribble" | "cut" | "pass";
+type ActionModel = DribbleModel | CutModel | PassModel;
+
+// Configuration for each action type
+interface ActionConfig<T extends ActionModel> {
+  type: ActionType;
+  Component: React.ComponentType<{
+    model: T;
+    offensePlayers: PlayerToken[];
+    toWorld: (clientX: number, clientY: number) => { x: number; y: number };
+    onChange: (next: T) => void;
+  }>;
+  idPrefix: string;
+  label: string;
+  title: string;
+}
+
+// Action configurations registry
+const ACTION_CONFIGS: Record<ActionType, ActionConfig<any>> = {
+  dribble: {
+    type: "dribble",
+    Component: DribblePath,
+    idPrefix: "drb",
+    label: "Dribble",
+    title: "Dribble (start attaches to selected offense player if any)",
+  },
+  cut: {
+    type: "cut",
+    Component: CutPath,
+    idPrefix: "cut",
+    label: "Cut",
+    title: "Cut (start attaches to selected offense player if any)",
+  },
+  pass: {
+    type: "pass",
+    Component: PassPath,
+    idPrefix: "pass",
+    label: "Pass",
+    title: "Pass (start attaches to selected offense player if any)",
+  },
+};
+
 export default function EditorMode() {
   const [players, setPlayers] = useState<PlayerToken[]>([]);
   const [cones, setCones] = useState<ConeToken[]>([]);
@@ -32,14 +76,20 @@ export default function EditorMode() {
   const centerRef = useRef<HTMLDivElement | null>(null);
   const stageRef = useRef<any>(null);
 
-  // Selection and tools (allow selecting a player for auto-attach)
+  // Selection and tools
   const [selectedPlayerId, setSelectedPlayerId] = useState<string | null>(null);
-  const [tool, setTool] = useState<"none" | "dribble" | "cut" | "pass">("none");
+  const [tool, setTool] = useState<"none" | ActionType>("none");
 
-  // Actions
-  const [dribbles, setDribbles] = useState<DribbleModel[]>([]);
-  const [cuts, setCuts] = useState<CutModel[]>([]);
-  const [passes, setPasses] = useState<PassModel[]>([]);
+  // Actions - unified state management
+  const [actions, setActions] = useState<{
+    dribble: DribbleModel[];
+    cut: CutModel[];
+    pass: PassModel[];
+  }>({
+    dribble: [],
+    cut: [],
+    pass: [],
+  });
 
   const [scale, setScale] = useState(1);
   const [leftVisible, setLeftVisible] = useState(true);
@@ -64,8 +114,8 @@ export default function EditorMode() {
       const availableCenterWidthNoLeft =
         containerWidth - rightWidth - gap;
 
-      const maxScale = 1;   // do not grow larger than design size
-      const minScale = 0.75; // allow shrinking on small screens
+      const maxScale = 1;
+      const minScale = 0.75;
       const availableHeight = Math.max(containerHeight, 200);
 
       const scaleFor = (w: number) => {
@@ -90,7 +140,7 @@ export default function EditorMode() {
     return () => ro.disconnect();
   }, []);
 
-  // Convert client to world coordinates using the current stage scale and position
+  // Convert client to world coordinates
   const toWorld = (clientX: number, clientY: number) => {
     const stage = stageRef.current;
     if (!stage) return { x: 0, y: 0 };
@@ -99,60 +149,48 @@ export default function EditorMode() {
     return { x: (clientX - rect.left) / s, y: (clientY - rect.top) / s };
   };
 
-  // Add dribble – auto-attach to a selected offense player if any
-  const addDribble = () => {
+  // Generic action creation helper
+  const createActionModel = <T extends BaseActionModel>(
+    type: ActionType,
+    idPrefix: string
+  ): T => {
     const selected = players.find((p) => p.id === selectedPlayerId && p.team === "offense");
     const startPoint = selected
       ? { x: selected.x, y: selected.y }
       : { x: COURT_X + COURT_WIDTH * 0.35, y: COURT_Y + COURT_HEIGHT * 0.45 };
     const endPoint = { x: startPoint.x + 120, y: startPoint.y - 40 };
-    const model: DribbleModel = {
-      id: `drb-${nextId.current++}`,
-      start: selected ? { kind: "player", playerId: selected.id } : { kind: "free", point: startPoint },
-      end: endPoint,
-      // Start straight (offset 0). User can bend globally with the midpoint handle.
-      mid: { t: 0.5, offset: 0 },
-    };
-    setDribbles((prev) => [...prev, model]);
-    setTool("dribble");
-  };
 
-  // Add handler
-  const addCut = () => {
-    const selected = players.find((p) => p.id === selectedPlayerId && p.team === "offense");
-    const startPoint = selected
-      ? { x: selected.x, y: selected.y }
-      : { x: COURT_X + COURT_WIDTH * 0.35, y: COURT_Y + COURT_HEIGHT * 0.45 };
-    const endPoint = { x: startPoint.x + 120, y: startPoint.y - 40 };
-    const model: CutModel = {
-      id: `cut-${nextId.current++}`,
-      start: selected ? { kind: "player", playerId: selected.id } : { kind: "free", point: startPoint },
+    return {
+      id: `${idPrefix}-${nextId.current++}`,
+      start: selected
+        ? { kind: "player", playerId: selected.id }
+        : { kind: "free", point: startPoint },
       end: endPoint,
       mid: { t: 0.5, offset: 0 },
-    };
-    setCuts((prev) => [...prev, model]);
-    setTool("cut");
+    } as T;
   };
 
-  // Add pass handler
-  const addPass = () => {
-    const selected = players.find((p) => p.id === selectedPlayerId && p.team === "offense");
-    const startPoint = selected
-      ? { x: selected.x, y: selected.y }
-      : { x: COURT_X + COURT_WIDTH * 0.35, y: COURT_Y + COURT_HEIGHT * 0.45 };
-    const endPoint = { x: startPoint.x + 120, y: startPoint.y - 40 };
-    const model: PassModel = {
-      id: `pass-${nextId.current++}`,
-      start: selected ? { kind: "player", playerId: selected.id } : { kind: "free", point: startPoint },
-      end: endPoint,
-      mid: { t: 0.5, offset: 0 },
-    };
-    setPasses((prev) => [...prev, model]);
-    setTool("pass");
+  // Generic action add handler
+  const addAction = (type: ActionType) => {
+    const config = ACTION_CONFIGS[type];
+    const model = createActionModel(type, config.idPrefix);
+    setActions((prev) => ({
+      ...prev,
+      [type]: [...prev[type], model],
+    }));
+    setTool(type);
   };
 
-  const updateDribble = (id: string, updater: (m: DribbleModel) => DribbleModel) => {
-    setDribbles((prev) => prev.map((d) => (d.id === id ? updater(d) : d)));
+  // Generic action update handler
+  const updateAction = <T extends ActionModel>(
+    type: ActionType,
+    id: string,
+    updater: (m: T) => T
+  ) => {
+    setActions((prev) => ({
+      ...prev,
+      [type]: prev[type].map((action) => (action.id === id ? updater(action as T) : action)),
+    }));
   };
 
   const defaultSpots = useMemo(
@@ -171,7 +209,7 @@ export default function EditorMode() {
     y: clamp(y, radius, STAGE_HEIGHT - radius),
   });
 
-  // Helpers to support drag from the toolbox
+  // Drag & drop support
   type DragToken =
     | { kind: "player"; team: "offense" | "defense"; number: 1 | 2 | 3 | 4 | 5 }
     | { kind: "cone" };
@@ -236,6 +274,11 @@ export default function EditorMode() {
     setCones((prev) => [...prev, { id: `cone-${nextId.current++}`, x: spot.x, y: spot.y }]);
   };
 
+  const offensePlayers = useMemo(
+    () => players.filter((p) => p.team === "offense"),
+    [players]
+  );
+
   return (
     <div
       style={{
@@ -244,9 +287,9 @@ export default function EditorMode() {
         alignItems: "center",
         gap: 24,
         padding: 24,
-        height: "100vh",    // lock to viewport height
+        height: "100vh",
         width: "100%",
-        overflow: "hidden", // prevent page growth/scroll from layout pushing out
+        overflow: "hidden",
         boxSizing: "border-box",
         background: "#fff",
       }}
@@ -255,7 +298,7 @@ export default function EditorMode() {
       <aside
         style={{
           width: 260,
-          height: Math.round(STAGE_HEIGHT * scale), // match scaled canvas height
+          height: Math.round(STAGE_HEIGHT * scale),
           padding: 12,
           border: "1px solid #e0e0e0",
           borderRadius: 8,
@@ -301,7 +344,7 @@ export default function EditorMode() {
           alignItems: "center",
           justifyContent: "center",
           background: "#ffffff",
-          height: Math.round(STAGE_HEIGHT * scale), // keep center aligned to scaled height
+          height: Math.round(STAGE_HEIGHT * scale),
         }}
       >
         <Stage
@@ -329,32 +372,27 @@ export default function EditorMode() {
 
           <HalfCourt />
 
-          {/* Dribble paths layer */}
-          <Layer>
-            {dribbles.map((d) => (
-              <DribblePath
-                key={d.id}
-                model={d}
-                offensePlayers={players.filter((p) => p.team === "offense")}
-                toWorld={toWorld}
-                onChange={(next) => updateDribble(d.id, () => next)}
-              />
-            ))}
-          </Layer>
+          {/* Render all action layers dynamically */}
+          {Object.entries(ACTION_CONFIGS).map(([type, config]) => (
+            <Layer key={type}>
+              {actions[type as ActionType].map((action) => {
+                const Component = config.Component;
+                return (
+                  <Component
+                    key={action.id}
+                    model={action}
+                    offensePlayers={offensePlayers}
+                    toWorld={toWorld}
+                    onChange={(next) =>
+                      updateAction(type as ActionType, action.id, () => next)
+                    }
+                  />
+                );
+              })}
+            </Layer>
+          ))}
 
-          {/* Render in Layer */}
-          <Layer>
-            {cuts.map((c) => (
-              <CutPath
-                key={c.id}
-                model={c}
-                offensePlayers={players.filter((p) => p.team === "offense")}
-                toWorld={toWorld}
-                onChange={(next) => setCuts((prev) => prev.map((ct) => (ct.id === c.id ? next : ct)))}
-              />
-            ))}
-          </Layer>
-
+          {/* Players Layer */}
           <Layer>
             {players.map((p) => {
               const radius = 20;
@@ -397,19 +435,6 @@ export default function EditorMode() {
               return <Cone key={c.id} x={c.x} y={c.y} {...handlers} />;
             })}
           </Layer>
-
-          {/* Render Passes Layer */}
-          <Layer>
-            {passes.map((p) => (
-              <PassPath
-                key={p.id}
-                model={p}
-                offensePlayers={players.filter((p) => p.team === "offense")}
-                toWorld={toWorld}
-                onChange={(next) => setPasses((prev) => prev.map((ps) => (ps.id === p.id ? next : ps)))}
-              />
-            ))}
-          </Layer>
         </Stage>
       </div>
 
@@ -417,7 +442,7 @@ export default function EditorMode() {
       <aside
         style={{
           width: 280,
-          height: Math.round(STAGE_HEIGHT * scale), // match scaled canvas height
+          height: Math.round(STAGE_HEIGHT * scale),
           padding: 12,
           border: "1px solid #e0e0e0",
           borderRadius: 8,
@@ -429,52 +454,27 @@ export default function EditorMode() {
         <section>
           <h3 style={{ marginTop: 0, marginBottom: 8 }}>Add Actions</h3>
           <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-            <button
-              onClick={addDribble}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 6,
-                border: tool === "dribble" ? "2px solid #0f172a" : "1px solid #0f172a",
-                background: "#ffffff",
-                color: "#0f172a",
-                cursor: "pointer",
-                fontWeight: tool === "dribble" ? "bold" : "normal",
-              }}
-              title="Dribble (start attaches to selected offense player if any)"
-            >
-              Dribble
-            </button>
-            <button
-              onClick={addCut}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 6,
-                border: tool === "cut" ? "2px solid #0f172a" : "1px solid #0f172a",
-                background: "#ffffff",
-                color: "#0f172a",
-                cursor: "pointer",
-                fontWeight: tool === "cut" ? "bold" : "normal",
-              }}
-              title="Cut (start attaches to selected offense player if any)"
-            >
-              Cut
-            </button>
-            <button
-              onClick={addPass}
-              style={{
-                padding: "6px 10px",
-                borderRadius: 6,
-                border: tool === "pass" ? "2px solid #0f172a" : "1px solid #0f172a",
-                background: "#ffffff",
-                color: "#0f172a",
-                cursor: "pointer",
-                fontWeight: tool === "pass" ? "bold" : "normal",
-              }}
-              title="Pass (start attaches to selected offense player if any)"
-            >
-              Pass
-            </button>
-            {/* keep other actions disabled for now */}
+            {/* Dynamically render action buttons from config */}
+            {Object.values(ACTION_CONFIGS).map((config) => (
+              <button
+                key={config.type}
+                onClick={() => addAction(config.type)}
+                style={{
+                  padding: "6px 10px",
+                  borderRadius: 6,
+                  border: tool === config.type ? "2px solid #0f172a" : "1px solid #0f172a",
+                  background: "#ffffff",
+                  color: "#0f172a",
+                  cursor: "pointer",
+                  fontWeight: tool === config.type ? "bold" : "normal",
+                }}
+                title={config.title}
+              >
+                {config.label}
+              </button>
+            ))}
+
+            {/* Disabled actions for future implementation */}
             {["Screen", "Shot", "Handoff"].map((label) => (
               <button
                 key={label}
