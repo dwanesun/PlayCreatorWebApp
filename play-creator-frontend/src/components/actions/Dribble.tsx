@@ -14,6 +14,12 @@ export type DribbleModel = {
 
 export type PlayerRef = { id: string; team: "offense" | "defense"; x: number; y: number };
 
+// Dribble configuration constants
+const SQUIGGLE_WAVELENGTH = 16;       // px between squiggle peaks
+const SQUIGGLE_AMPLITUDE = 5;         // px height of squiggle wave
+const SQUIGGLE_SEGMENTS_PER_WAVE = 8; // number of line segments per wave (for smoothness)
+const MAX_CURVE_OFFSET = 800;         // px maximum offset from straight line (controls curve limit)
+
 function lerp(a: Point, b: Point, t: number): Point {
   return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
 }
@@ -61,14 +67,11 @@ function buildDribblePolyline(start: Point, end: Point, mid: { t: number; offset
   }
 
   // Squiggle configuration based on actual arc length
-  const wavelength = 16;       // px between peaks
-  const waves = arcLength / wavelength;  // use fractional waves
+  const waves = arcLength / SQUIGGLE_WAVELENGTH;  // use fractional waves
   const freq = Math.PI * 2 * waves;
-  const amp = 5;               // fixed small amplitude (px), keeps the line "straight but squiggly"
 
   // Higher segment density for smooth sine waves: aim for ~8 segments per wavelength
-  const segmentsPerWave = 8;
-  const N = Math.max(32, Math.ceil(waves * segmentsPerWave));
+  const N = Math.max(32, Math.ceil(waves * SQUIGGLE_SEGMENTS_PER_WAVE));
 
   const pts: number[] = [];
   for (let i = 0; i <= N; i++) {
@@ -81,7 +84,7 @@ function buildDribblePolyline(start: Point, end: Point, mid: { t: number; offset
     const n = { x: -tan.y / tl, y: tan.x / tl };
 
     // Apply a small sinusoidal offset along the normal with fixed amplitude
-    const s = Math.sin(t * freq) * amp;
+    const s = Math.sin(t * freq) * SQUIGGLE_AMPLITUDE;
     pts.push(p.x + n.x * s, p.y + n.y * s);
   }
   return pts;
@@ -135,7 +138,7 @@ export function DribblePath(props: {
     onChange({ ...model, end: { x, y } });
   };
 
-  const onMidDragMove = (evt: any) => {
+  const onMidDrag = (evt: any) => {
     const { x, y } = toWorld(evt.evt.clientX, evt.evt.clientY);
     const vx = endPoint.x - startPoint.x;
     const vy = endPoint.y - startPoint.y;
@@ -145,7 +148,7 @@ export function DribblePath(props: {
     const nx = -vy / (len || 1);
     const ny = vx / (len || 1);
     const along = { x: startPoint.x + vx * t, y: startPoint.y + vy * t };
-    const offset = Math.max(-200, Math.min(200, (x - along.x) * nx + (y - along.y) * ny));
+    const offset = Math.max(-500, Math.min(500, (x - along.x) * nx + (y - along.y) * ny));
     onChange({ ...model, mid: { t, offset } });
   };
 
@@ -206,7 +209,8 @@ export function DribblePath(props: {
         stroke="#7c2d12"
         strokeWidth={2}
         draggable
-        onDragMove={onMidDragMove}
+        onDragMove={onMidDrag}
+        dragBoundFunc={() => midPos}
         onMouseEnter={() => (document.body.style.cursor = "grab")}
         onMouseLeave={() => (document.body.style.cursor = "default")}
         onDragStart={() => (document.body.style.cursor = "grabbing")}
