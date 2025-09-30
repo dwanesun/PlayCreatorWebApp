@@ -123,37 +123,81 @@ function buildSimplePolyline(start: Point, end: Point, control: Point): number[]
 }
 
 function buildSquigglePolyline(
-        start: Point,
-end: Point,
-control: Point,
-style: Extract<LineStyle, { type: "squiggle" }>
+  start: Point,
+  end: Point,
+  control: Point,
+  style: Extract<LineStyle, { type: "squiggle" }>
 ): number[] {
-    // Measure arc length
-    const measureSteps = 100;
-    let arcLength = 0;
-    let prevP = quadPoint(start, control, end, 0);
-    for (let i = 1; i <= measureSteps; i++) {
+  // First pass: measure arc length and build arc-length lookup table
+  const measureSteps = 200;
+  const arcLengths: number[] = [0];
+  let totalArcLength = 0;
+  let prevP = quadPoint(start, control, end, 0);
+  
+  for (let i = 1; i <= measureSteps; i++) {
     const t = i / measureSteps;
     const p = quadPoint(start, control, end, t);
-    arcLength += Math.hypot(p.x - prevP.x, p.y - prevP.y);
+    const segmentLength = Math.hypot(p.x - prevP.x, p.y - prevP.y);
+    totalArcLength += segmentLength;
+    arcLengths.push(totalArcLength);
     prevP = p;
-}
+  }
 
-    const waves = arcLength / style.wavelength;
-    const freq = Math.PI * 2 * waves;
-    const N = Math.max(32, Math.ceil(waves * style.segmentsPerWave));
+  // Helper: given a target arc length, find the corresponding t parameter
+  const arcLengthToT = (targetLength: number): number => {
+    if (targetLength <= 0) return 0;
+    if (targetLength >= totalArcLength) return 1;
+    
+    // Binary search in arcLengths array
+    let low = 0;
+    let high = arcLengths.length - 1;
+    
+    while (low < high - 1) {
+      const mid = Math.floor((low + high) / 2);
+      if (arcLengths[mid] < targetLength) {
+        low = mid;
+      } else {
+        high = mid;
+      }
+    }
+    
+    // Linear interpolation between low and high
+    const lengthBefore = arcLengths[low];
+    const lengthAfter = arcLengths[high];
+    const segmentLength = lengthAfter - lengthBefore;
+    
+    if (segmentLength === 0) return low / measureSteps;
+    
+    const segmentFraction = (targetLength - lengthBefore) / segmentLength;
+    const tBefore = low / measureSteps;
+    const tAfter = high / measureSteps;
+    
+    return tBefore + (tAfter - tBefore) * segmentFraction;
+  };
 
-    const pts: number[] = [];
-    for (let i = 0; i <= N; i++) {
-    const t = i / N;
+  const waves = totalArcLength / style.wavelength;
+  const freq = Math.PI * 2 * waves;
+  const N = Math.max(32, Math.ceil(waves * style.segmentsPerWave));
+
+  const pts: number[] = [];
+  
+  for (let i = 0; i <= N; i++) {
+    // Use arc length parameterization instead of uniform t
+    const arcLengthFraction = i / N;
+    const targetArcLength = arcLengthFraction * totalArcLength;
+    const t = arcLengthToT(targetArcLength);
+    
     const p = quadPoint(start, control, end, t);
     const tan = quadTangent(start, control, end, t);
     const tl = Math.hypot(tan.x, tan.y) || 1;
     const n = { x: -tan.y / tl, y: tan.x / tl };
-    const s = Math.sin(t * freq) * style.amplitude;
+    
+    // Apply sinusoidal offset based on arc length fraction, not t
+    const s = Math.sin(arcLengthFraction * freq) * style.amplitude;
     pts.push(p.x + n.x * s, p.y + n.y * s);
-}
-    return pts;
+  }
+  
+  return pts;
 }
 
 // ============================================================================
