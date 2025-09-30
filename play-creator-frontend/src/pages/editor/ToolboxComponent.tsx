@@ -12,6 +12,12 @@ interface ToolboxProps {
   onStartDrag: (e: React.DragEvent, data: DragToken) => void;
 }
 
+// Player button size configuration
+const PLAYER_BUTTON_SIZES = {
+  OFFENSE_SIZE: 40,  // Circle diameter in pixels
+  DEFENSE_SIZE: 34,  // Square width/height in pixels
+};
+
 export function Toolbox({
   scale,
   tool,
@@ -98,12 +104,18 @@ export function Toolbox({
                 }
                 onClick={() => onAddPlayer("offense", n as 1 | 2 | 3 | 4 | 5)}
                 style={{
-                  padding: "6px 0",
-                  borderRadius: 6,
-                  border: "1px solid #0f172a",
+                  width: `${PLAYER_BUTTON_SIZES.OFFENSE_SIZE}px`,
+                  height: `${PLAYER_BUTTON_SIZES.OFFENSE_SIZE}px`,
+                  borderRadius: "50%",
+                  border: "2px solid #0f172a",
                   background: "#ffffff",
                   color: "#0f172a",
                   cursor: "grab",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: "600",
+                  fontSize: "14px",
                 }}
                 title={`Add/Drag Offense ${n}`}
               >
@@ -129,16 +141,38 @@ export function Toolbox({
                 }
                 onClick={() => onAddPlayer("defense", n as 1 | 2 | 3 | 4 | 5)}
                 style={{
-                  padding: "6px 0",
-                  borderRadius: 6,
+                  width: `${PLAYER_BUTTON_SIZES.DEFENSE_SIZE}px`,
+                  height: `${PLAYER_BUTTON_SIZES.DEFENSE_SIZE}px`,
+                  borderRadius: 4,
                   border: "1px solid #c0392b",
                   background: "#fdecea",
                   color: "#972c23",
                   cursor: "grab",
+                  aspectRatio: "1",
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
+                  fontWeight: "500",
+                  position: "relative",
                 }}
                 title={`Add/Drag Defense ${n}`}
               >
-                {n}
+                <span style={{ 
+                  display: "inline-flex", 
+                  alignItems: "flex-end",
+                  lineHeight: 1,
+                }}>
+                  X
+                  <span style={{ 
+                    fontSize: "0.7em",
+                    verticalAlign: "baseline",
+                    position: "relative",
+                    top: "0.25em",
+                    left: "0.05em",
+                  }}>
+                    {n}
+                  </span>
+                </span>
               </button>
             ))}
           </div>
