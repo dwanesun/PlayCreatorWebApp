@@ -6,7 +6,7 @@ import { DefensivePlayer } from "../components/tokens/DefensivePlayer.tsx";
 import { Cone } from "../components/tokens/Cone.tsx";
 import type { PlayerToken } from "../components/tokens/PlayerToken.ts";
 import type { ConeToken } from "../components/tokens/ConeToken.ts";
-import { DribblePath, type DribbleModel } from "../components/actions/Dribble.tsx";
+import { DribblePath, type DribbleModel } from "../components/actions/DribblePath.tsx";
 import {
   STAGE_WIDTH,
   STAGE_HEIGHT,

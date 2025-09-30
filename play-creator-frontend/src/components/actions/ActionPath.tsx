@@ -1,0 +1,315 @@
+import { Group, Circle, Line, Arrow } from "react-konva";
+
+// ============================================================================
+// Shared Types
+// ============================================================================
+
+export type Point = { x: number; y: number };
+
+export type ActionStart =
+| { kind: "player"; playerId: string }
+| { kind: "free"; point: Point };
+
+export type BaseActionModel = {
+    id: string;
+    start: ActionStart;
+    end: Point;
+    mid: { t: number; offset: number };
+};
+
+export type PlayerRef = {
+    id: string;
+    team: "offense" | "defense";
+    x: number;
+    y: number
+};
+
+// ============================================================================
+// Configuration
+// ============================================================================
+
+export const ACTION_CONFIG = {
+        MAX_CURVE_OFFSET: 800,        // px maximum offset from straight line
+        ARROW_LENGTH: 12,             // px length of arrow head
+        ARROW_WIDTH: 12,              // px width of arrow head
+        START_HANDLE_RADIUS: 8,       // px radius of start handle
+        MID_HANDLE_RADIUS: 7,         // px radius of midpoint handle
+        END_HANDLE_RADIUS: 9,         // px radius of end handle
+        SNAP_RADIUS: 28,              // px snap distance to player
+};
+
+// ============================================================================
+// Quadratic Bezier Math Utilities
+// ============================================================================
+
+export function lerp(a: Point, b: Point, t: number): Point {
+    return { x: a.x + (b.x - a.x) * t, y: a.y + (b.y - a.y) * t };
+}
+
+export function quadPoint(a: Point, c: Point, b: Point, t: number): Point {
+    const u = 1 - t;
+    return {
+        x: u * u * a.x + 2 * u * t * c.x + t * t * b.x,
+        y: u * u * a.y + 2 * u * t * c.y + t * t * b.y,
+    };
+}
+
+export function quadTangent(a: Point, c: Point, b: Point, t: number): Point {
+    const u = 1 - t;
+    return {
+        x: 2 * u * (c.x - a.x) + 2 * t * (b.x - c.x),
+        y: 2 * u * (c.y - a.y) + 2 * t * (b.y - c.y),
+    };
+}
+
+export function getControlPoint(start: Point, end: Point, mid: { t: number; offset: number }): Point {
+    const vx = end.x - start.x;
+    const vy = end.y - start.y;
+    const len = Math.hypot(vx, vy) || 1;
+    const nx = -vy / len;
+    const ny = vx / len;
+    const base = lerp(start, end, mid.t);
+    return { x: base.x + nx * mid.offset, y: base.y + ny * mid.offset };
+}
+
+// ============================================================================
+// Base Action Path Component
+// ============================================================================
+
+export type LineStyle =
+| { type: "solid" }
+| { type: "dashed"; dash: number[] }
+| { type: "squiggle"; wavelength: number; amplitude: number; segmentsPerWave: number };
+
+export type EndMarker = "arrow" | "none";
+
+export interface BaseActionPathProps<T extends BaseActionModel> {
+    model: T;
+    offensePlayers: PlayerRef[];
+    onChange: (next: T) => void;
+    toWorld: (clientX: number, clientY: number) => Point;
+    lineStyle: LineStyle;
+    endMarker?: EndMarker;
+    stroke?: string;
+    strokeWidth?: number;
+}
+
+// Build polyline for the action path
+export function buildActionPolyline(
+    start: Point,
+    end: Point,
+    mid: { t: number; offset: number },
+lineStyle: LineStyle
+): number[] {
+    const control = getControlPoint(start, end, mid);
+
+    if (lineStyle.type === "squiggle") {
+        return buildSquigglePolyline(start, end, control, lineStyle);
+    }
+
+    // For solid or dashed lines, use simple curve
+    return buildSimplePolyline(start, end, control);
+}
+
+function buildSimplePolyline(start: Point, end: Point, control: Point): number[] {
+    const N = 50; // segments for smooth curve
+    const pts: number[] = [];
+    for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const p = quadPoint(start, control, end, t);
+    pts.push(p.x, p.y);
+}
+    return pts;
+}
+
+function buildSquigglePolyline(
+        start: Point,
+end: Point,
+control: Point,
+style: Extract<LineStyle, { type: "squiggle" }>
+): number[] {
+    // Measure arc length
+    const measureSteps = 100;
+    let arcLength = 0;
+    let prevP = quadPoint(start, control, end, 0);
+    for (let i = 1; i <= measureSteps; i++) {
+    const t = i / measureSteps;
+    const p = quadPoint(start, control, end, t);
+    arcLength += Math.hypot(p.x - prevP.x, p.y - prevP.y);
+    prevP = p;
+}
+
+    const waves = arcLength / style.wavelength;
+    const freq = Math.PI * 2 * waves;
+    const N = Math.max(32, Math.ceil(waves * style.segmentsPerWave));
+
+    const pts: number[] = [];
+    for (let i = 0; i <= N; i++) {
+    const t = i / N;
+    const p = quadPoint(start, control, end, t);
+    const tan = quadTangent(start, control, end, t);
+    const tl = Math.hypot(tan.x, tan.y) || 1;
+    const n = { x: -tan.y / tl, y: tan.x / tl };
+    const s = Math.sin(t * freq) * style.amplitude;
+    pts.push(p.x + n.x * s, p.y + n.y * s);
+}
+    return pts;
+}
+
+// ============================================================================
+// Generic Action Path Component
+// ============================================================================
+
+export function ActionPath<T extends BaseActionModel>(props: BaseActionPathProps<T>) {
+    const {
+        model,
+        offensePlayers,
+        onChange,
+        toWorld,
+        lineStyle,
+        endMarker = "arrow",
+        stroke = "#0f172a",
+        strokeWidth = 3,
+    } = props;
+
+    // Resolve start point
+    let startPoint: Point;
+    if (model.start.kind === "player") {
+        const p = offensePlayers.find((pp) => pp.id === model.start.playerId);
+        startPoint = p ? { x: p.x, y: p.y } : { x: 0, y: 0 };
+    } else {
+        startPoint = model.start.point;
+    }
+
+    const endPoint = model.end;
+    const poly = buildActionPolyline(startPoint, endPoint, model.mid, lineStyle);
+
+    // Event handlers
+    const onStartDragMove = (evt: any) => {
+    const { x, y } = toWorld(evt.evt.clientX, evt.evt.clientY);
+    const snapR2 = ACTION_CONFIG.SNAP_RADIUS * ACTION_CONFIG.SNAP_RADIUS;
+    let best: PlayerRef | null = null;
+    let bestD2 = Infinity;
+    for (const p of offensePlayers) {
+    const dx = x - p.x;
+    const dy = y - p.y;
+    const d2 = dx * dx + dy * dy;
+    if (d2 < bestD2) {
+        best = p;
+        bestD2 = d2;
+    }
+}
+    if (best && bestD2 <= snapR2) {
+        onChange({ ...model, start: { kind: "player", playerId: best.id } } as T);
+    } else {
+        onChange({ ...model, start: { kind: "free", point: { x, y } } } as T);
+    }
+};
+
+    const onEndDragMove = (evt: any) => {
+    const { x, y } = toWorld(evt.evt.clientX, evt.evt.clientY);
+    onChange({ ...model, end: { x, y } } as T);
+};
+
+    const onMidDrag = (evt: any) => {
+    const { x, y } = toWorld(evt.evt.clientX, evt.evt.clientY);
+    const vx = endPoint.x - startPoint.x;
+    const vy = endPoint.y - startPoint.y;
+    const len2 = vx * vx + vy * vy || 1;
+    const t = Math.max(0, Math.min(1, ((x - startPoint.x) * vx + (y - startPoint.y) * vy) / len2));
+    const len = Math.sqrt(len2);
+    const nx = -vy / (len || 1);
+    const ny = vx / (len || 1);
+    const along = { x: startPoint.x + vx * t, y: startPoint.y + vy * t };
+    const offset = Math.max(-ACTION_CONFIG.MAX_CURVE_OFFSET, Math.min(ACTION_CONFIG.MAX_CURVE_OFFSET, (x - along.x) * nx + (y - along.y) * ny));
+    onChange({ ...model, mid: { t, offset } } as T);
+};
+
+    // Calculate positions
+    const control = getControlPoint(startPoint, endPoint, model.mid);
+    const midPos = quadPoint(startPoint, control, endPoint, 0.5);
+
+    // Arrow direction
+    const beforeEnd = quadPoint(startPoint, control, endPoint, 0.95);
+    const dx = endPoint.x - beforeEnd.x;
+    const dy = endPoint.y - beforeEnd.y;
+    const dirLen = Math.hypot(dx, dy) || 1;
+    const arrowDist = ACTION_CONFIG.ARROW_LENGTH * 0.8;
+    const arrowStartX = endPoint.x - (dx / dirLen) * arrowDist;
+    const arrowStartY = endPoint.y - (dy / dirLen) * arrowDist;
+
+    return (
+    <Group>
+        {/* Line */}
+    <Line
+    points={poly}
+    stroke={stroke}
+    strokeWidth={strokeWidth}
+    listening={false}
+    dash={lineStyle.type === "dashed" ? lineStyle.dash : undefined}
+    />
+
+    {/* End marker */}
+    {endMarker === "arrow" && (
+        <Arrow
+        points={[arrowStartX, arrowStartY, endPoint.x, endPoint.y]}
+        pointerLength={ACTION_CONFIG.ARROW_LENGTH}
+        pointerWidth={ACTION_CONFIG.ARROW_WIDTH}
+        fill={stroke}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+        listening={false}
+        />
+        )}
+
+    {/* Start handle */}
+    <Circle
+    x={startPoint.x}
+    y={startPoint.y}
+    radius={ACTION_CONFIG.START_HANDLE_RADIUS}
+    fill="#22c55e"
+    stroke="#14532d"
+    strokeWidth={2}
+    draggable
+    onDragMove={onStartDragMove}
+    onMouseEnter={() => (document.body.style.cursor = "grab")}
+    onMouseLeave={() => (document.body.style.cursor = "default")}
+    onDragStart={() => (document.body.style.cursor = "grabbing")}
+    onDragEnd={() => (document.body.style.cursor = "default")}
+    />
+
+    {/* Midpoint handle */}
+    <Circle
+    x={midPos.x}
+    y={midPos.y}
+    radius={ACTION_CONFIG.MID_HANDLE_RADIUS}
+    fill="#f59e0b"
+    stroke="#7c2d12"
+    strokeWidth={2}
+    draggable
+    onDragMove={onMidDrag}
+    dragBoundFunc={() => midPos}
+    onMouseEnter={() => (document.body.style.cursor = "grab")}
+    onMouseLeave={() => (document.body.style.cursor = "default")}
+    onDragStart={() => (document.body.style.cursor = "grabbing")}
+    onDragEnd={() => (document.body.style.cursor = "default")}
+    />
+
+    {/* End handle */}
+    <Circle
+    x={endPoint.x}
+    y={endPoint.y}
+    radius={ACTION_CONFIG.END_HANDLE_RADIUS}
+    fill="#3b82f6"
+    stroke="#1e3a8a"
+    strokeWidth={2}
+    draggable
+    onDragMove={onEndDragMove}
+    onMouseEnter={() => (document.body.style.cursor = "grab")}
+    onMouseLeave={() => (document.body.style.cursor = "default")}
+    onDragStart={() => (document.body.style.cursor = "grabbing")}
+    onDragEnd={() => (document.body.style.cursor = "default")}
+    />
+    </Group>
+    );
+}
