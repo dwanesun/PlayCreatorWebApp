@@ -1,11 +1,12 @@
 import { DribblePath, type DribbleModel } from "../../components/actions/DribblePath.tsx";
 import { CutPath, type CutModel } from "../../components/actions/CutPath.tsx";
 import { PassPath, type PassModel } from "../../components/actions/PassPath.tsx";
+import { ScreenPath, type ScreenModel } from "../../components/actions/ScreenPath.tsx";
 import type { PlayerToken } from "../../components/tokens/PlayerToken.ts";
 
 // Action type union
-export type ActionType = "dribble" | "cut" | "pass";
-export type ActionModel = DribbleModel | CutModel | PassModel;
+export type ActionType = "dribble" | "cut" | "pass" | "screen";
+export type ActionModel = DribbleModel | CutModel | PassModel | ScreenModel;
 
 // Configuration for each action type
 export interface ActionConfig<T extends ActionModel> {
@@ -43,5 +44,12 @@ export const ACTION_CONFIGS: Record<ActionType, ActionConfig<any>> = {
     idPrefix: "pass",
     label: "Pass",
     title: "Pass (start attaches to selected offense player if any)",
+  },
+  screen: {
+    type: "screen",
+    Component: ScreenPath,
+    idPrefix: "scr",
+    label: "Screen",
+    title: "Screen (start attaches to selected offense player if any)",
   },
 };

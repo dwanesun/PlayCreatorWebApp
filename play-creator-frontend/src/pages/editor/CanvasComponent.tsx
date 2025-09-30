@@ -11,6 +11,7 @@ import type { ActionType, ActionModel } from "./ActionConfigurations.tsx";
 import type { DribbleModel } from "../../components/actions/DribblePath.tsx";
 import type { CutModel } from "../../components/actions/CutPath.tsx";
 import type { PassModel } from "../../components/actions/PassPath.tsx";
+import type { ScreenModel } from "../../components/actions/ScreenPath.tsx";
 import {
   STAGE_WIDTH,
   STAGE_HEIGHT,
@@ -26,6 +27,7 @@ interface CanvasProps {
     dribble: DribbleModel[];
     cut: CutModel[];
     pass: PassModel[];
+    screen: ScreenModel[];
   };
   selectedPlayerId: string | null;
   onSelectPlayer: (id: string) => void;

@@ -4,6 +4,7 @@ import type { BaseActionModel } from "../../components/actions/ActionPath.tsx";
 import type { DribbleModel } from "../../components/actions/DribblePath.tsx";
 import type { CutModel } from "../../components/actions/CutPath.tsx";
 import type { PassModel } from "../../components/actions/PassPath.tsx";
+import type { ScreenModel } from "../../components/actions/ScreenPath.tsx";
 import type { ActionType, ActionModel } from "./ActionConfigurations.tsx";
 import { ACTION_CONFIGS } from "./ActionConfigurations.tsx";
 import {
@@ -24,10 +25,12 @@ export function useActionManagement(
     dribble: DribbleModel[];
     cut: CutModel[];
     pass: PassModel[];
+    screen: ScreenModel[];
   }>({
     dribble: [],
     cut: [],
     pass: [],
+    screen: [],
   });
 
   // Generic action creation helper

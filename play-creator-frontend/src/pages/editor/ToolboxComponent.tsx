@@ -71,7 +71,7 @@ export function Toolbox({
             </button>
           ))}
 
-          {["Screen", "Shot", "Handoff"].map((label) => (
+          {["Shot", "Handoff"].map((label) => (
             <button
               key={label}
               style={{
@@ -253,7 +253,6 @@ export function Toolbox({
               />
               <rect x="7.2" y="13" width="9.6" height="2" fill="#ffffff" opacity={0.9} />
             </svg>
-            <span>Cone</span>
           </button>
         </div>
       </section>

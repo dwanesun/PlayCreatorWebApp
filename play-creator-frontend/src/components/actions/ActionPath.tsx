@@ -91,7 +91,7 @@ export type LineStyle =
       segmentsPerWave: number;
     };
 
-export type EndMarker = "arrow" | "none";
+export type EndMarker = "arrow" | "bar" | "none";
 
 export interface BaseActionPathProps<T extends BaseActionModel> {
   model: T;
@@ -100,6 +100,7 @@ export interface BaseActionPathProps<T extends BaseActionModel> {
   toWorld: (clientX: number, clientY: number) => Point;
   lineStyle: LineStyle;
   endMarker?: EndMarker;
+  barLength?: number; // Length of bar for "bar" end marker
   stroke?: string;
   strokeWidth?: number;
 }
@@ -224,6 +225,7 @@ export function ActionPath<T extends BaseActionModel>(
     toWorld,
     lineStyle,
     endMarker = "arrow",
+    barLength = 50,
     stroke = "#0f172a",
     strokeWidth = 3,
   } = props;
@@ -310,6 +312,30 @@ export function ActionPath<T extends BaseActionModel>(
           listening={false}
         />
       )}
+      {endMarker === "bar" && (() => {
+          const tangent = {
+              x: 2 * (endPoint.x - control.x),
+              y: 2 * (endPoint.y - control.y),
+          };
+          const len = Math.hypot(tangent.x, tangent.y);
+          const perp = len ? { x: -tangent.y / len, y: tangent.x / len } : { x: 0, y: 0 };
+
+          const halfLen = (barLength ?? 10);
+
+        return (
+            <Line
+                points={[
+                    endPoint.x - perp.x * halfLen,
+                    endPoint.y - perp.y * halfLen,
+                    endPoint.x + perp.x * halfLen,
+                    endPoint.y + perp.y * halfLen,
+                ]}
+                stroke={stroke}
+                strokeWidth={strokeWidth}
+                listening={false}
+            />
+        );
+      })()}
 
       {/* Start handle */}
       <Circle
